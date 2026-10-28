@@ -13,162 +13,113 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.graphics.Color;
 import android.view.Gravity;
-import android.view.ViewGroup;
+import android.view.View;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.ProgressBar;
-import android.widget.EditText;
-import android.widget.Button;
 import android.widget.Toast;
-
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
 
 public class MainActivity extends Activity implements SensorEventListener {
 
     private SensorManager sensorManager;
     private Sensor stepSensor;
-    private TextView stepsText, distanceText, caloriesText;
-    private TextView goalText, statusText, remainingText;
-    private ProgressBar progressBar;
+    private TextView stepsText, goalText, distanceText, caloriesText;
     private EditText goalInput;
-    private SharedPreferences prefs;
+    private Button goalButton;
+    private SharedPreferences preferences;
 
-    private int dailyGoal = 10000;
     private int steps = 0;
-    private int baseline = -1;
-    private String today;
+    private int dailyGoal = 6000;
+    private float strideMeters = 0.75f;
+
+    private final int backgroundColor = Color.rgb(16, 25, 50);
+    private final int accentColor = Color.rgb(0, 220, 180);
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        prefs = getSharedPreferences("stepfit", MODE_PRIVATE);
-        dailyGoal = prefs.getInt("goal", 10000);
-        today = new SimpleDateFormat("yyyyMMdd", Locale.US).format(new Date());
+        preferences = getSharedPreferences("StepFitData", MODE_PRIVATE);
+        dailyGoal = preferences.getInt("daily_goal", 6000);
 
-        String savedDate = prefs.getString("date", "");
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 
-        if (today.equals(savedDate)) {
-            steps = prefs.getInt("steps", 0);
-            baseline = prefs.getInt("baseline", -1);
-        } else {
-            steps = 0;
-            baseline = -1;
-            prefs.edit()
-                    .putString("date", today)
-                    .putInt("steps", 0)
-                    .putInt("baseline", -1)
-                    .apply();
+        if (sensorManager != null) {
+            stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
         }
 
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setGravity(Gravity.CENTER);
-        layout.setPadding(28, 20, 28, 20);
-        layout.setBackgroundColor(Color.rgb(12, 20, 40));
+        layout.setGravity(Gravity.CENTER_HORIZONTAL);
+        layout.setPadding(28, 36, 28, 28);
+        layout.setBackgroundColor(backgroundColor);
 
-        TextView title = makeText("👟 StepFit PRO", 30, Color.CYAN);
-        layout.addView(title);
+        TextView title = new TextView(this);
+        title.setText("StepFit PRO");
+        title.setTextSize(32);
+        title.setTypeface(null, 1);
+        title.setTextColor(accentColor);
+        title.setGravity(Gravity.CENTER);
+        layout.addView(title, matchWidth());
 
-        stepsText = makeText("", 34, Color.WHITE);
-        layout.addView(stepsText);
+        TextView subtitle = new TextView(this);
+        subtitle.setText("YOUR DAILY WALKING PARTNER");
+        subtitle.setTextSize(13);
+        subtitle.setTextColor(Color.LTGRAY);
+        subtitle.setGravity(Gravity.CENTER);
+        subtitle.setPadding(0, 8, 0, 32);
+        layout.addView(subtitle, matchWidth());
 
-        distanceText = makeText("", 22, Color.WHITE);
-        layout.addView(distanceText);
+        stepsText = makeText("आजची पावले\n0", 30, Color.WHITE);
+        layout.addView(stepsText, matchWidth());
 
-        caloriesText = makeText("", 22, Color.WHITE);
-        layout.addView(caloriesText);
+        goalText = makeText("", 18, accentColor);
+        goalText.setPadding(0, 18, 0, 10);
+        layout.addView(goalText, matchWidth());
 
-        goalText = makeText("", 21, Color.GREEN);
-        layout.addView(goalText);
+        distanceText = makeText("अंतर: 0.00 किमी", 20, Color.WHITE);
+        distanceText.setPadding(0, 12, 0, 12);
+        layout.addView(distanceText, matchWidth());
 
-        progressBar = new ProgressBar(this, null,
-                android.R.attr.progressBarStyleHorizontal);
-        progressBar.setMax(dailyGoal);
+        caloriesText = makeText("अंदाजे कॅलरी: 0", 20, Color.WHITE);
+        caloriesText.setPadding(0, 12, 0, 24);
+        layout.addView(caloriesText, matchWidth());
 
-        layout.addView(progressBar,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, 30));
-
-        remainingText = makeText("", 18, Color.WHITE);
-        layout.addView(remainingText);
-
-        TextView chooseGoal = makeText("तुमचे दैनिक लक्ष्य ठरवा", 20, Color.CYAN);
-        layout.addView(chooseGoal);
+        TextView goalLabel = makeText("तुमचे दैनिक पावलांचे लक्ष्य", 17, Color.WHITE);
+        layout.addView(goalLabel, matchWidth());
 
         goalInput = new EditText(this);
         goalInput.setSingleLine(true);
-        goalInput.setHint("उदा. 8000");
-        goalInput.setInputType(2);
         goalInput.setTextColor(Color.WHITE);
         goalInput.setHintTextColor(Color.LTGRAY);
+        goalInput.setHint("उदा. 6000");
+        goalInput.setInputType(2);
         goalInput.setText(String.valueOf(dailyGoal));
         goalInput.setGravity(Gravity.CENTER);
+        layout.addView(goalInput, matchWidth());
 
-        layout.addView(goalInput,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT));
+        goalButton = new Button(this);
+        goalButton.setText("लक्ष्य जतन करा");
+        layout.addView(goalButton, matchWidth());
 
-        Button setGoalButton = new Button(this);
-        setGoalButton.setText("लक्ष्य सेट करा");
-        layout.addView(setGoalButton);
+        goalButton.setOnClickListener(v -> saveGoal());
 
-        statusText = makeText("", 16, Color.LTGRAY);
-        layout.addView(statusText);
+        TextView note = makeText(
+                "चालायला सुरुवात करा आणि तुमचे लक्ष्य पूर्ण करा!",
+                15, Color.LTGRAY);
+        note.setPadding(0, 28, 0, 0);
+        layout.addView(note, matchWidth());
 
         setContentView(layout);
+        updateDisplay();
+    }
 
-        setGoalButton.setOnClickListener(v -> {
-            String value = goalInput.getText().toString().trim();
-
-            try {
-                int newGoal = Integer.parseInt(value);
-
-                if (newGoal < 1 || newGoal > 1000000) {
-                    Toast.makeText(this,
-                            "कृपया 1 ते 10,00,000 मधील लक्ष्य टाका",
-                            Toast.LENGTH_LONG).show();
-                    return;
-                }
-
-                dailyGoal = newGoal;
-                prefs.edit().putInt("goal", dailyGoal).apply();
-
-                progressBar.setMax(dailyGoal);
-                updateScreen();
-
-                Toast.makeText(this,
-                        "तुमचे लक्ष्य जतन झाले!",
-                        Toast.LENGTH_SHORT).show();
-
-            } catch (NumberFormatException e) {
-                Toast.makeText(this,
-                        "कृपया योग्य संख्या टाका",
-                        Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        updateScreen();
-
-        sensorManager = (SensorManager)
-                getSystemService(Context.SENSOR_SERVICE);
-
-        if (sensorManager != null) {
-            stepSensor = sensorManager.getDefaultSensor(
-                    Sensor.TYPE_STEP_COUNTER);
-        }
-
-        if (stepSensor == null) {
-            statusText.setText(
-                    "या फोनमध्ये स्टेप-काउंटर सेन्सर उपलब्ध नाही.");
-        } else {
-            statusText.setText(
-                    "पावले मोजण्यासाठी फोन सोबत घेऊन चाला.");
-            checkActivityPermission();
-        }
+    private LinearLayout.LayoutParams matchWidth() {
+        return new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
     }
 
     private TextView makeText(String text, int size, int color) {
@@ -177,48 +128,64 @@ public class MainActivity extends Activity implements SensorEventListener {
         view.setTextSize(size);
         view.setTextColor(color);
         view.setGravity(Gravity.CENTER);
-        view.setPadding(0, 10, 0, 10);
         return view;
     }
 
-    private void checkActivityPermission() {
-        if (Build.VERSION.SDK_INT >= 29 &&
-                checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION)
-                != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(
-                    new String[]{Manifest.permission.ACTIVITY_RECOGNITION},
-                    100);
+    private void saveGoal() {
+        String value = goalInput.getText().toString().trim();
+
+        if (value.isEmpty()) {
+            Toast.makeText(this, "कृपया लक्ष्य लिहा", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            int newGoal = Integer.parseInt(value);
+
+            if (newGoal < 1 || newGoal > 1000000) {
+                Toast.makeText(this,
+                        "लक्ष्य 1 ते 1000000 दरम्यान ठेवा",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            dailyGoal = newGoal;
+            preferences.edit().putInt("daily_goal", dailyGoal).apply();
+
+            InputMethodManager imm = (InputMethodManager)
+                    getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(goalInput.getWindowToken(), 0);
+            }
+
+            goalInput.clearFocus();
+            updateDisplay();
+
+            Toast.makeText(this, "दैनिक लक्ष्य जतन झाले!",
+                    Toast.LENGTH_SHORT).show();
+
+        } catch (NumberFormatException e) {
+            Toast.makeText(this, "योग्य संख्या लिहा",
+                    Toast.LENGTH_SHORT).show();
         }
     }
 
-    private void updateScreen() {
+    private void updateDisplay() {
         if (stepsText == null) return;
 
-        double distance = steps * 0.00075;
-        double calories = steps * 0.04;
-        int remaining = Math.max(0, dailyGoal - steps);
-        int percent = (int) Math.min(100,
-                (steps * 100.0) / dailyGoal);
-
         stepsText.setText("आजची पावले\n" + steps);
+        goalText.setText("लक्ष्य: " + dailyGoal + " पावले");
 
-        distanceText.setText(String.format(Locale.getDefault(),
-                "🛣️ अंतर : %.2f किमी", distance));
+        float distanceKm = (steps * strideMeters) / 1000f;
+        int calories = Math.round(steps * 0.04f);
 
-        caloriesText.setText(String.format(Locale.getDefault(),
-                "🔥 कॅलरी : %.1f kcal", calories));
+        distanceText.setText(String.format(
+                java.util.Locale.US, "अंतर: %.2f किमी", distanceKm));
 
-        goalText.setText("🎯 दैनिक लक्ष्य : " + dailyGoal
-                + "\nपूर्ण : " + percent + "%");
+        caloriesText.setText("अंदाजे कॅलरी: " + calories);
 
-        progressBar.setMax(dailyGoal);
-        progressBar.setProgress(Math.min(steps, dailyGoal));
-
-        if (remaining == 0) {
-            remainingText.setText("🎉 अभिनंदन! लक्ष्य पूर्ण झाले.");
-        } else {
-            remainingText.setText("आणखी " + remaining
-                    + " पावले चालायची आहेत.");
+        if (steps >= dailyGoal) {
+            goalText.setText("🎉 लक्ष्य पूर्ण! " + steps + " / " + dailyGoal);
         }
     }
 
@@ -227,13 +194,12 @@ public class MainActivity extends Activity implements SensorEventListener {
         super.onResume();
 
         if (sensorManager != null && stepSensor != null) {
-            if (Build.VERSION.SDK_INT < 29 ||
-                    checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION)
-                    == PackageManager.PERMISSION_GRANTED) {
-                sensorManager.registerListener(
-                        this, stepSensor,
-                        SensorManager.SENSOR_DELAY_NORMAL);
-            }
+            sensorManager.registerListener(
+                    this, stepSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        } else {
+            Toast.makeText(this,
+                    "या फोनमध्ये पावले मोजणारा सेन्सर उपलब्ध नाही.",
+                    Toast.LENGTH_LONG).show();
         }
     }
 
@@ -249,43 +215,13 @@ public class MainActivity extends Activity implements SensorEventListener {
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor.getType() == Sensor.TYPE_STEP_COUNTER) {
-            int total = (int) event.values[0];
-
-            if (baseline < 0 || total < baseline) {
-                baseline = total;
-            }
-
-            steps = Math.max(0, total - baseline);
-
-            prefs.edit()
-                    .putString("date", today)
-                    .putInt("baseline", baseline)
-                    .putInt("steps", steps)
-                    .apply();
-
-            updateScreen();
+            steps = Math.max(0, (int) event.values[0]);
+            updateDisplay();
         }
     }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        // Accuracy update is not required.
     }
-
-    @Override
-    public void onRequestPermissionsResult(
-            int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(
-                requestCode, permissions, grantResults);
-
-        if (requestCode == 100) {
-            if (grantResults.length > 0 &&
-                    grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                statusText.setText(
-                        "परवानगी मिळाली. आता चालायला सुरुवात करा!");
-            } else {
-                statusText.setText(
-                        "पावले मोजण्यासाठी Activity Recognition परवानगी द्या.");
-            }
-        }
     }
-            }
