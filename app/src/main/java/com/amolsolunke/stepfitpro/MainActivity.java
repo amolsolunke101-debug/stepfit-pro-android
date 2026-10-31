@@ -2,9 +2,7 @@ package com.amolsolunke.stepfitpro;
 
 import android.Manifest;
 import android.app.Activity;
-import android.os.Bundle;
-import android.os.Build;
-import android.content.Context;
+import android.app.AlertDialog;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
@@ -12,11 +10,12 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.graphics.Color;
+import android.os.Build;
+import android.os.Bundle;
 import android.view.Gravity;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -27,217 +26,433 @@ import java.util.Locale;
 public class MainActivity extends Activity
         implements SensorEventListener {
 
-    private static final int ACTIVITY_PERMISSION_REQUEST = 1001;
-
+    private SharedPreferences prefs;
     private SensorManager sensorManager;
     private Sensor stepSensor;
-    private SharedPreferences preferences;
 
     private TextView stepsText;
-    private TextView goalText;
     private TextView distanceText;
     private TextView caloriesText;
-    private EditText goalInput;
+    private TextView historyText;
+    private TextView languageText;
+    private TextView statusText;
 
-    private long steps = 0;
-    private int dailyGoal = 6000;
+    private long todaySteps = 0;
     private long lastRawSteps = -1;
+    private long baseSteps = -1;
 
-    private final float strideMeters = 0.75f;
+    private float stride = 0.75f;
+    private String language = "en";
 
-    private final int backgroundColor =
-            Color.rgb(16, 25, 50);
+    private final int bg = Color.rgb(12, 19, 38);
+    private final int card = Color.rgb(27, 38, 65);
+    private final int accent = Color.rgb(0, 220, 180);
+    private final int white = Color.WHITE;
+    private final int muted = Color.rgb(175, 190, 210);
 
-    private final int accentColor =
-            Color.rgb(0, 220, 180);
+    // भाषा कोड, नाव, उपशीर्षक, आजची पावले,
+    // पावलांचा संदेश, अंतर, कॅलरी, सेटिंग्ज, भाषा, इतिहास
+
+    private final String[][] languages = {
+
+        {"en","English","A fresh start for your health every day!",
+         "Today's steps","No step limit — keep walking!",
+         "Distance","Calories","Settings","Language","Last 7 days"},
+
+        {"mr","मराठी","तुमच्या आरोग्याची रोजची नवी सुरुवात!",
+         "आजची पावले","पावलांची मर्यादा नाही — चालत राहा!",
+         "अंतर","कॅलरी","सेटिंग्ज","भाषा","मागील ७ दिवस"},
+
+        {"hi","हिन्दी","हर दिन सेहत की नई शुरुआत!",
+         "आज के कदम","कदमों की कोई सीमा नहीं!",
+         "दूरी","कैलोरी","सेटिंग्स","भाषा","पिछले ७ दिन"},
+
+        {"bn","বাংলা","প্রতিদিন সুস্থতার নতুন শুরু!",
+         "আজকের পদক্ষেপ","পদক্ষেপের কোনো সীমা নেই!",
+         "দূরত্ব","ক্যালোরি","সেটিংস","ভাষা","গত ৭ দিন"},
+
+        {"te","తెలుగు","ప్రతి రోజు ఆరోగ్యానికి కొత్త ఆరంభం!",
+         "నేటి అడుగులు","అడుగులకు పరిమితి లేదు!",
+         "దూరం","కేలరీలు","సెట్టింగ్‌లు","భాష","గత 7 రోజులు"},
+
+        {"ta","தமிழ்","ஆரோக்கியத்தின் புதிய தொடக்கம்!",
+         "இன்றைய அடிகள்","அடிகளுக்கு வரம்பில்லை!",
+         "தூரம்","கலோரிகள்","அமைப்புகள்","மொழி","கடந்த 7 நாட்கள்"},
+
+        {"kn","ಕನ್ನಡ","ಆರೋಗ್ಯಕ್ಕೆ ಹೊಸ ಆರಂಭ!",
+         "ಇಂದಿನ ಹೆಜ್ಜೆಗಳು","ಹೆಜ್ಜೆಗಳಿಗೆ ಮಿತಿಯಿಲ್ಲ!",
+         "ದೂರ","ಕ್ಯಾಲೊರಿಗಳು","ಸೆಟ್ಟಿಂಗ್‌ಗಳು","ಭಾಷೆ","ಕಳೆದ 7 ದಿನಗಳು"},
+
+        {"ml","മലയാളം","ആരോഗ്യത്തിന് പുതിയ തുടക്കം!",
+         "ഇന്നത്തെ ചുവടുകൾ","ചുവടുകൾക്ക് പരിധിയില്ല!",
+         "ദൂരം","കലോറി","ക്രമീകരണങ്ങൾ","ഭാഷ","കഴിഞ്ഞ 7 ദിവസം"},
+
+        {"gu","ગુજરાતી","સ્વાસ્થ્યની નવી શરૂઆત!",
+         "આજનાં પગલાં","પગલાંની કોઈ મર્યાદા નથી!",
+         "અંતર","કૅલરી","સેટિંગ્સ","ભાષા","છેલ્લા 7 દિવસ"},
+
+        {"pa","ਪੰਜਾਬੀ","ਸਿਹਤ ਦੀ ਨਵੀਂ ਸ਼ੁਰੂਆਤ!",
+         "ਅੱਜ ਦੇ ਕਦਮ","ਕਦਮਾਂ ਦੀ ਕੋਈ ਹੱਦ ਨਹੀਂ!",
+         "ਦੂਰੀ","ਕੈਲੋਰੀ","ਸੈਟਿੰਗਾਂ","ਭਾਸ਼ਾ","ਪਿਛਲੇ 7 ਦਿਨ"},
+
+        {"or","ଓଡ଼ିଆ","ସ୍ୱାସ୍ଥ୍ୟର ନୂଆ ଆରମ୍ଭ!",
+         "ଆଜିର ପଦକ୍ଷେପ","ପଦକ୍ଷେପର ସୀମା ନାହିଁ!",
+         "ଦୂରତା","କ୍ୟାଲୋରି","ସେଟିଂସ୍","ଭାଷା","ଗତ ୭ ଦିନ"},
+
+        {"as","অসমীয়া","স্বাস্থ্যৰ নতুন আৰম্ভণি!",
+         "আজিৰ খোজ","খোজৰ কোনো সীমা নাই!",
+         "দূৰত্ব","কেলৰি","ছেটিংছ","ভাষা","যোৱা ৭ দিন"},
+
+        {"ur","اردو","صحت کی نئی شروعات!",
+         "آج کے قدم","قدموں کی کوئی حد نہیں!",
+         "فاصلہ","کیلوریز","ترتیبات","زبان","گزشتہ ۷ دن"},
+
+        {"sa","संस्कृतम्","स्वास्थ्यस्य नूतनः आरम्भः!",
+         "अद्यतनानि पदानि","पदानां सीमा नास्ति!",
+         "दूरता","ऊर्जामात्रा","विन्यासाः","भाषा","विगताः सप्त दिनानि"},
+
+        {"kok","कोंकणी","आरोग्याची नवी सुरवात!",
+         "आयजचीं पावलां","पावलांची मर्यादा ना!",
+         "अंतर","कॅलरी","सेटिंग्स","भास","फाटले ७ दीस"},
+
+        {"mai","मैथिली","स्वास्थ्यक नव शुरुआत!",
+         "आइक पयर","पयरक कोनो सीमा नहि!",
+         "दूरी","कैलोरी","सेटिंग्स","भाषा","पिछला ७ दिन"},
+
+        {"ne","नेपाली","स्वास्थ्यको नयाँ सुरुवात!",
+         "आजका पाइला","पाइलाको सीमा छैन!",
+         "दूरी","क्यालोरी","सेटिङहरू","भाषा","पछिल्ला ७ दिन"},
+
+        {"doi","डोगरी","सेहत दी नमीं शुरुआत!",
+         "अज्ज दे कदम","कदमें दी कोई हद्द नेईं!",
+         "दूरी","कैलोरी","सेटिंग","भाशा","पिछले 7 दिन"},
+
+        {"ks","کٲشُر","صحتُک نَو شروعات!",
+         "آجُک قدم","قدمَن ہُند حد چھُ نہ!",
+         "فاصلہ","کیلوریز","ترتیبات","زبان","پچھلے ۷ دۄہ"},
+
+        {"mni","মৈতৈলোন","নুংঙাইগী অয়ুক অমা!",
+         "নহাক্কী খোংথাং","খোংথাংগী লিমিট লৈতে!",
+         "দূরত্ব","কেলোরি","সেটিংস","লোল","মমাংগী ৭ নুমিৎ"},
+
+        {"sat","ᱥᱟᱱᱛᱟᱲᱤ","ᱱᱟᱶᱟ ᱮᱦᱚᱵ!",
+         "ᱛᱮᱦᱮᱧ ᱥᱟᱢᱟᱝ","ᱥᱤᱢᱟ ᱵᱟᱹᱱᱩᱜ!",
+         "ᱫᱩᱨᱤ","ᱠᱮᱞᱚᱨᱤ","ᱥᱮᱴᱤᱝ","ᱯᱟᱹᱨᱥᱤ","ᱦᱟᱹᱞᱤ ᱗ ᱫᱤᱱ"},
+
+        {"brx","बड़ो","जिउनि गोजोन गोदान!",
+         "दिनैनि खुरां","खुरांनि सिमा गैया!",
+         "दुरि","केलरि","सेटिं","राव","आगोलनि ७ सान"}
+    };
+
+    private String text(int index) {
+        for (String[] item : languages) {
+            if (item[0].equals(language)) {
+                return item[index];
+            }
+        }
+        return languages[0][index];
+    }
+
+    private String dateKey(long time) {
+        return new SimpleDateFormat(
+                "yyyy-MM-dd", Locale.US
+        ).format(new Date(time));
+    }
+
+    private String today() {
+        return dateKey(System.currentTimeMillis());
+    }
+
+    private int dp(int value) {
+        return (int) (value *
+                getResources().getDisplayMetrics().density);
+    }
+
+    private TextView makeText(
+            String value, int size, int color) {
+
+        TextView t = new TextView(this);
+        t.setText(value);
+        t.setTextSize(size);
+        t.setTextColor(color);
+        t.setGravity(Gravity.CENTER);
+        t.setPadding(dp(7), dp(8), dp(7), dp(8));
+        return t;
+    }
+
+    private LinearLayout makeColumn() {
+        LinearLayout l = new LinearLayout(this);
+        l.setOrientation(LinearLayout.VERTICAL);
+        l.setPadding(dp(16), dp(10), dp(16), dp(10));
+        return l;
+    }
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    public void onCreate(Bundle state) {
+        super.onCreate(state);
 
-        preferences = getSharedPreferences(
+        prefs = getSharedPreferences(
                 "StepFitData", MODE_PRIVATE);
 
-        dailyGoal = preferences.getInt(
-                "daily_goal", 6000);
+        language = prefs.getString("language", "en");
+        stride = prefs.getFloat("stride", 0.75f);
 
-        steps = preferences.getLong(
-                "daily_steps", 0);
+        String savedDate = prefs.getString("date", "");
 
-        lastRawSteps = preferences.getLong(
-                "last_raw_steps", -1);
+        if (today().equals(savedDate)) {
+            todaySteps = prefs.getLong("today_steps", 0);
+            lastRawSteps = prefs.getLong("last_raw", -1);
+            baseSteps = prefs.getLong("base_steps", -1);
+        } else {
+            if (!savedDate.isEmpty()) {
+                prefs.edit().putLong(
+                        "history_" + savedDate,
+                        prefs.getLong("today_steps", 0)
+                ).apply();
+            }
+
+            todaySteps = 0;
+            lastRawSteps = -1;
+            baseSteps = -1;
+            saveData();
+        }
 
         sensorManager = (SensorManager)
-                getSystemService(Context.SENSOR_SERVICE);
+                getSystemService(SENSOR_SERVICE);
 
         if (sensorManager != null) {
             stepSensor = sensorManager.getDefaultSensor(
                     Sensor.TYPE_STEP_COUNTER);
         }
 
-        createInterface();
-        updateDisplay();
+        buildUI();
+        updateUI();
+        askPermission();
     }
 
-    private void createInterface() {
+    private void buildUI() {
+        ScrollView scroll = new ScrollView(this);
+        scroll.setBackgroundColor(bg);
 
-        LinearLayout layout = new LinearLayout(this);
-
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setGravity(Gravity.CENTER_HORIZONTAL);
-        layout.setPadding(28, 36, 28, 28);
-        layout.setBackgroundColor(backgroundColor);
+        LinearLayout root = makeColumn();
 
         TextView title = makeText(
-                "StepFit PRO", 32, accentColor);
-
+                "👟 StepFit PRO", 29, accent);
         title.setTypeface(null, 1);
-        layout.addView(title, matchWidth());
+        root.addView(title);
 
-        TextView subtitle = makeText(
-                "YOUR DAILY WALKING PARTNER",
-                13, Color.LTGRAY);
+        root.addView(makeText(text(2), 15, muted));
 
-        subtitle.setPadding(0, 8, 0, 32);
-        layout.addView(subtitle, matchWidth());
+        LinearLayout hero = makeColumn();
+        hero.setBackgroundColor(card);
 
-        stepsText = makeText(
-                "आजची पावले\n0", 30, Color.WHITE);
+        hero.addView(makeText(text(3), 18, muted));
 
-        layout.addView(stepsText, matchWidth());
+        stepsText = makeText("0", 48, accent);
+        stepsText.setTypeface(null, 1);
+        hero.addView(stepsText);
 
-        goalText = makeText(
-                "", 18, accentColor);
+        hero.addView(makeText(text(4), 14, white));
+        root.addView(hero);
 
-        goalText.setPadding(0, 18, 0, 10);
-        layout.addView(goalText, matchWidth());
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
 
-        distanceText = makeText(
-                "अंतर: 0.00 किमी", 20, Color.WHITE);
+        LinearLayout distanceCard = makeColumn();
+        distanceCard.setBackgroundColor(card);
+        distanceCard.addView(
+                makeText("📏 " + text(5), 15, muted));
 
-        distanceText.setPadding(0, 12, 0, 12);
-        layout.addView(distanceText, matchWidth());
+        distanceText = makeText("0.00 km", 21, white);
+        distanceCard.addView(distanceText);
 
-        caloriesText = makeText(
-                "अंदाजे कॅलरी: 0", 20, Color.WHITE);
+        LinearLayout calorieCard = makeColumn();
+        calorieCard.setBackgroundColor(card);
+        calorieCard.addView(
+                makeText("🔥 " + text(6), 15, muted));
 
-        caloriesText.setPadding(0, 12, 0, 24);
-        layout.addView(caloriesText, matchWidth());
+        caloriesText = makeText("0 kcal", 21, white);
+        calorieCard.addView(caloriesText);
 
-        TextView goalLabel = makeText(
-                "तुमचे दैनिक पावलांचे लक्ष्य",
-                17, Color.WHITE);
+        row.addView(distanceCard,
+                new LinearLayout.LayoutParams(0, -2, 1));
 
-        layout.addView(goalLabel, matchWidth());
+        row.addView(calorieCard,
+                new LinearLayout.LayoutParams(0, -2, 1));
 
-        goalInput = new EditText(this);
+        root.addView(row);
 
-        goalInput.setSingleLine(true);
-        goalInput.setTextColor(Color.WHITE);
-        goalInput.setHintTextColor(Color.LTGRAY);
-        goalInput.setHint("उदा. 6000");
-        goalInput.setInputType(2);
-        goalInput.setText(String.valueOf(dailyGoal));
-        goalInput.setGravity(Gravity.CENTER);
+        languageText = makeText(
+                "🌐 " + text(8) + ": " + languageName(),
+                15, white);
+        root.addView(languageText);
 
-        layout.addView(goalInput, matchWidth());
+        Button languageButton = new Button(this);
+        languageButton.setText(text(7) + " / " + text(8));
+        root.addView(languageButton);
 
-        Button goalButton = new Button(this);
+        languageButton.setOnClickListener(
+                v -> chooseLanguage());
 
-        goalButton.setText("लक्ष्य जतन करा");
-        layout.addView(goalButton, matchWidth());
+        root.addView(makeText(
+                "📊 " + text(9), 19, accent));
 
-        goalButton.setOnClickListener(v -> saveGoal());
+        historyText = makeText("", 14, white);
+        historyText.setGravity(Gravity.START);
+        root.addView(historyText);
 
-        TextView note = makeText(
-                "चालायला सुरुवात करा आणि तुमचे लक्ष्य पूर्ण करा!",
-                15, Color.LTGRAY);
+        statusText = makeText("", 13, muted);
+        root.addView(statusText);
 
-        note.setPadding(0, 28, 0, 0);
-        layout.addView(note, matchWidth());
-
-        setContentView(layout);
+        scroll.addView(root);
+        setContentView(scroll);
     }
 
-    private LinearLayout.LayoutParams matchWidth() {
-        return new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
-    }
-
-    private TextView makeText(
-            String text, int size, int color) {
-
-        TextView view = new TextView(this);
-
-        view.setText(text);
-        view.setTextSize(size);
-        view.setTextColor(color);
-        view.setGravity(Gravity.CENTER);
-
-        return view;
-    }
-
-    private String getTodayDate() {
-
-        return new SimpleDateFormat(
-                "yyyy-MM-dd", Locale.US)
-                .format(new Date());
-    }
-
-    private boolean hasActivityPermission() {
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-
-            return checkSelfPermission(
-                    Manifest.permission.ACTIVITY_RECOGNITION)
-                    == PackageManager.PERMISSION_GRANTED;
-        }
-
-        return true;
-    }
-
-    private void requestActivityPermission() {
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-
-            if (!hasActivityPermission()) {
-
-                requestPermissions(
-                        new String[]{
-                                Manifest.permission.ACTIVITY_RECOGNITION
-                        },
-                        ACTIVITY_PERMISSION_REQUEST);
-            } else {
-                startStepSensor();
+    private String languageName() {
+        for (String[] item : languages) {
+            if (item[0].equals(language)) {
+                return item[1];
             }
+        }
+        return "English";
+    }
 
-        } else {
-            startStepSensor();
+    private void chooseLanguage() {
+        String[] names = new String[languages.length];
+
+        for (int i = 0; i < languages.length; i++) {
+            names[i] = languages[i][1];
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Choose language / भाषा निवडा")
+                .setItems(names, (dialog, selected) -> {
+                    language = languages[selected][0];
+
+                    prefs.edit()
+                            .putString("language", language)
+                            .apply();
+
+                    buildUI();
+                    updateUI();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void askPermission() {
+        if (Build.VERSION.SDK_INT >= 29 &&
+                checkSelfPermission(
+                        Manifest.permission.ACTIVITY_RECOGNITION)
+                        != PackageManager.PERMISSION_GRANTED) {
+
+            requestPermissions(
+                    new String[]{
+                            Manifest.permission.ACTIVITY_RECOGNITION
+                    }, 1001);
         }
     }
 
-    private void startStepSensor() {
+    private void saveData() {
+        prefs.edit()
+                .putString("date", today())
+                .putLong("today_steps", todaySteps)
+                .putLong("last_raw", lastRawSteps)
+                .putLong("base_steps", baseSteps)
+                .apply();
+    }
 
-        if (sensorManager == null) {
-            showMessage("सेन्सर उपलब्ध नाही.");
-            return;
+    private void updateUI() {
+        if (stepsText == null) return;
+
+        stepsText.setText(String.format(
+                Locale.US, "%,d", todaySteps));
+
+        distanceText.setText(String.format(
+                Locale.US, "%.2f km",
+                todaySteps * stride / 1000.0));
+
+        caloriesText.setText(
+                Math.round(todaySteps * 0.04) + " kcal");
+
+        languageText.setText(
+                "🌐 " + text(8) + ": " + languageName());
+
+        StringBuilder history = new StringBuilder();
+
+        for (int i = 6; i >= 0; i--) {
+            String key = dateKey(
+                    System.currentTimeMillis()
+                            - i * 86400000L);
+
+            long count = key.equals(today())
+                    ? todaySteps
+                    : prefs.getLong("history_" + key, 0);
+
+            history.append(key)
+                    .append(" : ")
+                    .append(count)
+                    .append(" steps\n");
         }
 
-        if (stepSensor == null) {
-            showMessage(
-                    "या फोनमध्ये पावले मोजणारा सेन्सर उपलब्ध नाही.");
-            return;
+        historyText.setText(history.toString());
+
+        statusText.setText(
+                stepSensor == null
+                        ? "No step counter sensor detected."
+                        : "Step sensor available. Background counting needs a separate service.");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (sensorManager != null && stepSensor != null &&
+                (Build.VERSION.SDK_INT < 29 ||
+                checkSelfPermission(
+                        Manifest.permission.ACTIVITY_RECOGNITION)
+                        == PackageManager.PERMISSION_GRANTED)) {
+
+            sensorManager.registerListener(
+                    this, stepSensor,
+                    SensorManager.SENSOR_DELAY_NORMAL);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        if (sensorManager != null) {
+            sensorManager.unregisterListener(this);
         }
 
-        boolean registered = sensorManager.registerListener(
-                this,
-                stepSensor,
-                SensorManager.SENSOR_DELAY_NORMAL);
+        saveData();
+    }
 
-        if (!registered) {
-            showMessage("पावले मोजणे सुरू होऊ शकले नाही.");
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if (event.sensor.getType()
+                != Sensor.TYPE_STEP_COUNTER) return;
+
+        long raw = (long) event.values[0];
+
+        if (baseSteps < 0 || lastRawSteps < 0) {
+            baseSteps = raw - todaySteps;
         }
+
+        if (raw >= lastRawSteps || lastRawSteps < 0) {
+            todaySteps = Math.max(0, raw - baseSteps);
+            lastRawSteps = raw;
+
+            saveData();
+            updateUI();
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(
+            Sensor sensor, int accuracy) {
     }
 
     @Override
@@ -249,187 +464,16 @@ public class MainActivity extends Activity
         super.onRequestPermissionsResult(
                 requestCode, permissions, grantResults);
 
-        if (requestCode == ACTIVITY_PERMISSION_REQUEST) {
+        if (requestCode == 1001 &&
+                (grantResults.length == 0 ||
+                grantResults[0]
+                        != PackageManager.PERMISSION_GRANTED)) {
 
-            if (grantResults.length > 0
-                    && grantResults[0]
-                    == PackageManager.PERMISSION_GRANTED) {
-
-                startStepSensor();
-
-            } else {
-                showMessage(
-                        "पावले मोजण्यासाठी हालचालींची परवानगी आवश्यक आहे.");
-            }
+            Toast.makeText(
+                    this,
+                    "Physical activity permission is required.",
+                    Toast.LENGTH_LONG
+            ).show();
         }
-    }
-
-    private void saveGoal() {
-
-        String value = goalInput.getText()
-                .toString().trim();
-
-        if (value.isEmpty()) {
-            showMessage("कृपया लक्ष्य लिहा.");
-            return;
-        }
-
-        try {
-
-            int newGoal = Integer.parseInt(value);
-
-            if (newGoal < 1 || newGoal > 1000000) {
-                showMessage(
-                        "लक्ष्य 1 ते 1000000 दरम्यान ठेवा.");
-                return;
-            }
-
-            dailyGoal = newGoal;
-
-            preferences.edit()
-                    .putInt("daily_goal", dailyGoal)
-                    .apply();
-
-            InputMethodManager imm =
-                    (InputMethodManager)
-                    getSystemService(
-                            Context.INPUT_METHOD_SERVICE);
-
-            if (imm != null) {
-                imm.hideSoftInputFromWindow(
-                        goalInput.getWindowToken(), 0);
-            }
-
-            goalInput.clearFocus();
-
-            updateDisplay();
-
-            showMessage("दैनिक लक्ष्य जतन झाले!");
-
-        } catch (NumberFormatException e) {
-            showMessage("योग्य संख्या लिहा.");
-        }
-    }
-
-    private void updateDisplay() {
-
-        if (stepsText == null) {
-            return;
-        }
-
-        stepsText.setText("आजची पावले\n" + steps);
-
-        if (steps >= dailyGoal) {
-            goalText.setText(
-                    "🎉 लक्ष्य पूर्ण! "
-                            + steps + " / " + dailyGoal);
-        } else {
-            goalText.setText(
-                    "लक्ष्य: " + dailyGoal + " पावले");
-        }
-
-        float distanceKm =
-                (steps * strideMeters) / 1000f;
-
-        long calories = Math.round(steps * 0.04f);
-
-        distanceText.setText(String.format(
-                Locale.US,
-                "अंतर: %.2f किमी",
-                distanceKm));
-
-        caloriesText.setText(
-                "अंदाजे कॅलरी: " + calories);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        requestActivityPermission();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-
-        if (sensorManager != null) {
-            sensorManager.unregisterListener(this);
-        }
-    }
-
-    @Override
-    public void onSensorChanged(SensorEvent event) {
-
-        if (event.sensor.getType()
-                != Sensor.TYPE_STEP_COUNTER) {
-            return;
-        }
-
-        long rawSteps = (long) event.values[0];
-
-        String today = getTodayDate();
-
-        String savedDate = preferences.getString(
-                "step_date", "");
-
-        SharedPreferences.Editor editor =
-                preferences.edit();
-
-        if (!today.equals(savedDate)) {
-
-            // नवीन दिवस: दैनिक पावले शून्य करा.
-            steps = 0;
-            lastRawSteps = rawSteps;
-
-            editor.putString("step_date", today);
-            editor.putLong("daily_steps", 0);
-            editor.putLong("last_raw_steps", rawSteps);
-            editor.apply();
-
-        } else {
-
-            steps = preferences.getLong(
-                    "daily_steps", 0);
-
-            lastRawSteps = preferences.getLong(
-                    "last_raw_steps", -1);
-
-            if (lastRawSteps < 0) {
-
-                // पहिल्यांदा सेन्सरची नोंद जतन करा.
-                lastRawSteps = rawSteps;
-
-            } else if (rawSteps >= lastRawSteps) {
-
-                // मागील नोंदीनंतर झालेली पावले जोडा.
-                steps += rawSteps - lastRawSteps;
-
-                lastRawSteps = rawSteps;
-
-            } else {
-
-                // फोन रीस्टार्ट झाल्यास सेन्सरचा आकडा
-                // कमी होऊ शकतो. आधीची दैनिक पावले जतन करा.
-                lastRawSteps = rawSteps;
-            }
-
-            editor.putString("step_date", today);
-            editor.putLong("daily_steps", steps);
-            editor.putLong("last_raw_steps", lastRawSteps);
-            editor.apply();
-        }
-
-        updateDisplay();
-    }
-
-    private void showMessage(String message) {
-        Toast.makeText(
-                this, message, Toast.LENGTH_LONG).show();
-    }
-
-    @Override
-    public void onAccuracyChanged(
-            Sensor sensor, int accuracy) {
-        // अतिरिक्त बदल आवश्यक नाहीत.
     }
 }
