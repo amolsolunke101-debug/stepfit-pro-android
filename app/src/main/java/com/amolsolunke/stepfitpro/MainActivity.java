@@ -15,68 +15,70 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class MainActivity extends Activity {
-
     private SharedPreferences prefs;
     private LinearLayout root, content, nav;
+    private TextView stepsView, distanceView, caloriesView, goalView, progressView, statusView;
     private int page = 0;
     private String language = "en";
     private int theme = 0;
-
     private int accent = Color.rgb(0, 220, 180);
     private int bg = Color.rgb(10, 18, 38);
     private int card = Color.rgb(27, 42, 68);
 
     private final String[] langCodes = {
-        "en","mr","hi","bn","te","ta","kn","ml","gu","pa",
-        "or","as","ur","sa","kok","mai","ne","doi","ks","mni","sat","br"
+        "en","mr","hi","bn","te","ta","kn","ml","gu","pa","or",
+        "as","ur","sa","kok","mai","ne","doi","ks","mni","sat","br"
     };
 
     private final String[] langNames = {
-        "English","मराठी","हिन्दी","বাংলা","తెలుగు","தமிழ்",
-        "ಕನ್ನಡ","മലയാളം","ગુજરાતી","ਪੰਜਾਬੀ","ଓଡ଼ିଆ","অসমীয়া",
-        "اردو","संस्कृतम्","कोंकणी","मैथिली","नेपाली","डोगरी",
-        "کٲشُر","মৈতৈলোন্","ᱥᱟᱱᱛᱟᱲᱤ","बड़ो"
+        "English","मराठी","हिन्दी","বাংলা","తెలుగు","தமிழ்","ಕನ್ನಡ",
+        "മലയാളം","ગુજરાતી","ਪੰਜਾਬੀ","ଓଡ଼ିଆ","অসমীয়া","اردو",
+        "संस्कृतम्","कोंकणी","मैथिली","नेपाली","डोगरी","کٲشُر",
+        "মৈতৈলোন্","ᱥᱟᱱᱛᱟᱲᱤ","बड़ो"
     };
 
     private final String[][] labels = {
-        {
-            "Home","Progress","History","Charts","Settings","About",
-            "Today's steps","Distance","Calories","Daily goal","Set goal",
-            "Language","Theme","Save","Cancel","Last 7 days",
-            "No step limit — keep walking!","Step sensor available",
-            "Step sensor not available","Reset today's count","Weight (kg)",
-            "Stride (cm)","Dark navy","Ocean blue","Forest green","Purple",
-            "Goal progress","Total steps","Average steps","Highest day",
-            "About StepFit PRO","Offline step counter","Choose language",
-            "Choose theme","Settings saved","Enter goal (0 = no goal)",
-            "Sensor permission needed","Permission required"
-        },
-        {
-            "मुख्यपृष्ठ","प्रगती","इतिहास","आलेख","सेटिंग्ज","माहिती",
-            "आजची पावले","अंतर","कॅलरी","दैनिक लक्ष्य","लक्ष्य ठेवा",
-            "भाषा","थीम","जतन करा","रद्द करा","मागील ७ दिवस",
-            "पावलांची मर्यादा नाही — चालत राहा!","स्टेप सेन्सर उपलब्ध",
-            "स्टेप सेन्सर उपलब्ध नाही","आजची मोजणी रीसेट करा",
-            "वजन (किलो)","पावलांची लांबी (सेमी)","गडद निळा",
-            "समुद्री निळा","हिरवा","जांभळा","लक्ष्य प्रगती",
-            "एकूण पावले","सरासरी पावले","सर्वाधिक पावले",
-            "StepFit PRO बद्दल","ऑफलाइन स्टेप काउंटर","भाषा निवडा",
-            "थीम निवडा","सेटिंग्ज जतन झाल्या",
-            "लक्ष्य भरा (० = लक्ष्य नाही)","सेन्सर परवानगी आवश्यक",
-            "परवानगी आवश्यक"
-        },
-        {
-            "Inicio","Progreso","Historial","Gráficos","Ajustes","Acerca de",
-            "Pasos de hoy","Distancia","Calorías","Meta diaria","Definir meta",
-            "Idioma","Tema","Guardar","Cancelar","Últimos 7 días",
-            "Sin límite de pasos","Sensor disponible","Sensor no disponible",
-            "Reiniciar pasos de hoy","Peso (kg)","Longitud de paso (cm)",
-            "Azul oscuro","Azul océano","Verde bosque","Morado",
-            "Progreso de meta","Pasos totales","Promedio","Día máximo",
-            "Acerca de StepFit PRO","Contador sin conexión","Elegir idioma",
-            "Elegir tema","Ajustes guardados","Meta (0 = sin meta)",
-            "Permiso del sensor necesario","Permiso necesario"
-        }
+      {
+        "Home","Progress","History","Charts","Settings","About",
+        "Today's steps","Distance","Calories","Daily goal","Set goal",
+        "Language","Theme","Save","Cancel","Last 7 days",
+        "No step limit — keep walking!","Step sensor available",
+        "Step sensor not available","Reset today's count","Weight (kg)",
+        "Stride (cm)","Dark navy","Ocean blue","Forest green",
+        "Purple","Goal progress","Total steps","Average steps",
+        "Highest day","About StepFit PRO","Offline step counter",
+        "Choose language","Choose theme","Settings saved",
+        "Enter goal (0 = no goal)","Sensor permission needed",
+        "Permission required"
+      },
+      {
+        "मुख्यपृष्ठ","प्रगती","इतिहास","आलेख","सेटिंग्ज","माहिती",
+        "आजची पावले","अंतर","कॅलरी","दैनिक लक्ष्य","लक्ष्य ठेवा",
+        "भाषा","थीम","जतन करा","रद्द करा","मागील ७ दिवस",
+        "पावलांची मर्यादा नाही — चालत राहा!","स्टेप सेन्सर उपलब्ध",
+        "स्टेप सेन्सर उपलब्ध नाही","आजची मोजणी रीसेट करा",
+        "वजन (किलो)","पावलांची लांबी (सेमी)","गडद निळा",
+        "समुद्री निळा","हिरवा","जांभळा","लक्ष्य प्रगती",
+        "एकूण पावले","सरासरी पावले","सर्वाधिक पावले",
+        "StepFit PRO बद्दल","ऑफलाइन स्टेप काउंटर",
+        "भाषा निवडा","थीम निवडा","सेटिंग्ज जतन झाल्या",
+        "लक्ष्य भरा (० = लक्ष्य नाही)","सेन्सर परवानगी आवश्यक",
+        "परवानगी आवश्यक"
+      },
+      {
+        "Inicio","Progreso","Historial","Gráficos","Ajustes",
+        "Acerca de","Pasos de hoy","Distancia","Calorías",
+        "Meta diaria","Definir meta","Idioma","Tema","Guardar",
+        "Cancelar","Últimos 7 días","Sin límite de pasos",
+        "Sensor disponible","Sensor no disponible",
+        "Reiniciar pasos de hoy","Peso (kg)","Longitud de paso (cm)",
+        "Azul oscuro","Azul océano","Verde bosque","Morado",
+        "Progreso de meta","Pasos totales","Promedio","Día máximo",
+        "Acerca de StepFit PRO","Contador sin conexión",
+        "Elegir idioma","Elegir tema","Ajustes guardados",
+        "Meta (0 = sin meta)","Permiso del sensor necesario",
+        "Permiso necesario"
+      }
     };
 
     private String t(int i) {
@@ -87,11 +89,11 @@ public class MainActivity extends Activity {
 
     private String today() {
         return new SimpleDateFormat("yyyy-MM-dd", Locale.US)
-            .format(new Date());
+                .format(new Date());
     }
 
     private int dp(float v) {
-        return (int)(v * getResources().getDisplayMetrics().density + 0.5f);
+        return (int) (v * getResources().getDisplayMetrics().density + .5f);
     }
 
     @Override
@@ -106,8 +108,7 @@ public class MainActivity extends Activity {
 
         if (Build.VERSION.SDK_INT >= 29 &&
             checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION)
-                != PackageManager.PERMISSION_GRANTED) {
-
+                    != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(
                 new String[]{Manifest.permission.ACTIVITY_RECOGNITION},
                 1001
@@ -117,39 +118,33 @@ public class MainActivity extends Activity {
         buildShell();
         showPage(0);
 
-        try {
-            Intent serviceIntent = new Intent(this, StepCounterService.class);
-
-            if (Build.VERSION.SDK_INT >= 26) {
-                startForegroundService(serviceIntent);
-            } else {
-                startService(serviceIntent);
-            }
-        } catch (Exception ignored) {
-            // सेवा सुरू न झाल्यास अॅप बंद होऊ नये.
+        if (Build.VERSION.SDK_INT >= 26) {
+            try {
+                startForegroundService(
+                    new Intent(this, StepCounterService.class)
+                );
+            } catch (Exception ignored) {}
+        } else {
+            try {
+                startService(new Intent(this, StepCounterService.class));
+            } catch (Exception ignored) {}
         }
     }
 
     private void applyTheme() {
         int[] bgs = {
-            Color.rgb(10,18,38),
-            Color.rgb(8,27,48),
-            Color.rgb(12,32,25),
-            Color.rgb(28,18,48)
+            Color.rgb(10,18,38), Color.rgb(8,27,48),
+            Color.rgb(12,32,25), Color.rgb(28,18,48)
         };
 
         int[] cards = {
-            Color.rgb(27,42,68),
-            Color.rgb(20,55,78),
-            Color.rgb(26,61,48),
-            Color.rgb(52,35,73)
+            Color.rgb(27,42,68), Color.rgb(20,55,78),
+            Color.rgb(26,61,48), Color.rgb(52,35,73)
         };
 
         int[] accents = {
-            Color.rgb(0,220,180),
-            Color.rgb(55,190,255),
-            Color.rgb(98,230,145),
-            Color.rgb(200,130,255)
+            Color.rgb(0,220,180), Color.rgb(55,190,255),
+            Color.rgb(98,230,145), Color.rgb(200,130,255)
         };
 
         int index = Math.max(0, Math.min(theme, 3));
@@ -201,369 +196,300 @@ public class MainActivity extends Activity {
         return d;
     }
 
-    private Button button(String label, Runnable action) {
-        Button b = new Button(this);
-        b.setText(label);
-        b.setAllCaps(false);
-        b.setTextSize(14);
-        b.setOnClickListener(v -> action.run());
-        return b;
-    }
-
     private void buildShell() {
-        ScrollView scroll = new ScrollView(this);
-
         root = column();
         root.setBackgroundColor(bg);
 
-        TextView brand = text("👟 StepFit PRO", 30, accent, true);
-        root.addView(brand, lp(-1, 65));
-
-        root.addView(
-            text("A fresh start for your health every day!",
-                16, Color.LTGRAY, false),
-            lp(-1, 40)
+        TextView title = text(
+            "👟 StepFit PRO",
+            28,
+            accent,
+            true
         );
+        root.addView(title, lp(-1, 64));
 
         content = column();
-        root.addView(content, lp(-1, -2));
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
+        root.addView(scroll, new LinearLayout.LayoutParams(
+            -1, 0, 1
+        ));
 
         nav = row();
-        nav.setBackgroundColor(card);
 
-        String[] names = {t(0), t(1), t(2), t(4)};
-        int[] pages = {0, 1, 2, 4};
+        String[] names = {
+            t(0), t(1), t(2), t(4)
+        };
 
         for (int i = 0; i < names.length; i++) {
-            final int p = pages[i];
-            Button b = button(names[i], () -> showPage(p));
-
-            nav.addView(
-                b,
-                new LinearLayout.LayoutParams(0, dp(54), 1)
-            );
+            final int selected = i;
+            Button b = new Button(this);
+            b.setText(names[i]);
+            b.setTextSize(10);
+            b.setOnClickListener(v -> {
+                if (selected == 3) {
+                    showPage(4);
+                } else {
+                    showPage(selected);
+                }
+            });
+            nav.addView(b, new LinearLayout.LayoutParams(
+                0, dp(52), 1
+            ));
         }
 
         root.addView(nav, lp(-1, 58));
-        scroll.addView(root);
-        setContentView(scroll);
+        setContentView(root);
     }
 
-    private void cardAdd(LinearLayout parent, View v) {
-        LinearLayout wrap = column();
-        wrap.setBackground(shape(card, 20));
-        wrap.addView(v);
+    private void addCard(String title, String value) {
+        LinearLayout box = column();
+        box.setBackground(shape(card, 18));
+        box.setElevation(dp(3));
+
+        TextView heading = text(title, 15, Color.LTGRAY, false);
+        TextView number = text(value, 26, Color.WHITE, true);
+
+        box.addView(heading);
+        box.addView(number);
 
         LinearLayout.LayoutParams p = lp(-1, -2);
-        p.setMargins(0, dp(6), 0, dp(8));
-
-        parent.addView(wrap, p);
+        p.setMargins(0, dp(7), 0, dp(7));
+        content.addView(box, p);
     }
 
-    private long steps() {
-        return prefs.getLong("today_steps", 0);
-    }
-
-    private double stride() {
-        return prefs.getFloat("stride_cm", 75f) / 100.0;
-    }
-
-    private int goal() {
-        return prefs.getInt("goal", 9000);
-    }
-
-    private double weight() {
-        return prefs.getFloat("weight_kg", 70f);
-    }
-
-    private void showPage(int p) {
-        page = p;
+    private void showPage(int selectedPage) {
+        page = selectedPage;
         content.removeAllViews();
 
-        applyTheme();
-        root.setBackgroundColor(bg);
-
-        if (p == 0) {
-            long st = steps();
-            double km = st * stride() / 1000.0;
-            long kcal = Math.round(st * weight() * 0.0005);
-
-            LinearLayout hero = column();
-            hero.setBackground(shape(card, 24));
-
-            hero.addView(text(t(6), 21, Color.LTGRAY, false));
-
-            TextView stepsView = text(
-                String.format(Locale.US, "%,d", st),
-                54, accent, true
-            );
-            hero.addView(stepsView);
-
-            hero.addView(text(t(16), 15, Color.WHITE, false));
-
-            LinearLayout stats = row();
-            LinearLayout dist = column();
-            LinearLayout cal = column();
-
-            dist.addView(text("📏 " + t(7), 15, Color.LTGRAY, false));
-            dist.addView(
-                text(String.format(Locale.US, "%.2f km", km),
-                    25, Color.WHITE, true)
-            );
-
-            cal.addView(text("🔥 " + t(8), 15, Color.LTGRAY, false));
-            cal.addView(
-                text(kcal + " kcal", 25, Color.WHITE, true)
-            );
-
-            stats.addView(dist, new LinearLayout.LayoutParams(0, -2, 1));
-            stats.addView(cal, new LinearLayout.LayoutParams(0, -2, 1));
-            hero.addView(stats);
-
-            hero.addView(
-                text(t(9) + ": " +
-                    (goal() == 0 ? "No limit" :
-                    String.format(Locale.US, "%,d", goal())),
-                    17, accent, true)
-            );
-
-            int percent = goal() == 0 ? 0 :
-                (int)Math.min(100, st * 100 / Math.max(1, goal()));
-
-            hero.addView(
-                text(goal() == 0 ? "" : "Goal progress: " + percent + "%",
-                    15, Color.WHITE, false)
-            );
-
-            cardAdd(content, hero);
-
-            content.addView(
-                button("🎯 " + t(10), this::editGoal),
-                lp(-1, 52)
-            );
-
-            content.addView(
-                button("🌐 " + t(11) + ": " + languageName(),
-                    this::chooseLanguage),
-                lp(-1, 52)
-            );
-
-            content.addView(
-                button("🎨 " + t(12), this::chooseTheme),
-                lp(-1, 52)
-            );
-
-            content.addView(
-                button("📊 " + t(15), () -> showPage(2)),
-                lp(-1, 52)
-            );
-
-            content.addView(
-                text(sensorStatus(), 13, Color.LTGRAY, false),
-                lp(-1, 50)
-            );
-
-        } else if (p == 1) {
-
-            content.addView(text("📈 " + t(1), 26, accent, true));
-
-            long st = steps();
-            int g = goal();
-
-            int percent = g == 0 ? 0 :
-                (int)Math.min(100, st * 100 / Math.max(1, g));
-
-            cardAdd(content,
-                text(t(26) + ": " + percent + "%", 24, Color.WHITE, true));
-
-            cardAdd(content,
-                text(t(27) + ": " + String.format(Locale.US, "%,d", st),
-                    20, Color.WHITE, true));
-
-            cardAdd(content,
-                text(t(28) + ": " +
-                    String.format(Locale.US, "%,d", weeklyAverage()),
-                    18, Color.WHITE, false));
-
-            cardAdd(content,
-                text(t(29) + ": " +
-                    String.format(Locale.US, "%,d", highestDay()),
-                    18, Color.WHITE, false));
-
-            content.addView(
-                button("🎯 " + t(10), this::editGoal),
-                lp(-1, 52)
-            );
-
-        } else if (p == 2 || p == 3) {
-
-            content.addView(
-                text((p == 2 ? "📅 " : "📊 ") + t(p == 2 ? 2 : 3),
-                    26, accent, true)
-            );
-
-            if (p == 3) {
-                drawBars(content);
-            }
-
-            for (int i = 6; i >= 0; i--) {
-                String day = dayKey(i);
-
-                long count = day.equals(today())
-                    ? steps()
-                    : prefs.getLong("history_" + day, 0);
-
-                LinearLayout r = row();
-
-                r.addView(
-                    text(day, 14, Color.LTGRAY, false),
-                    new LinearLayout.LayoutParams(0, -2, 1)
-                );
-
-                r.addView(
-                    text(String.format(Locale.US, "%,d steps", count),
-                        15, Color.WHITE, true),
-                    new LinearLayout.LayoutParams(0, -2, 1)
-                );
-
-                cardAdd(content, r);
-            }
-
-        } else if (p == 4) {
-
-            content.addView(text("⚙️ " + t(4), 26, accent, true));
-
-            content.addView(
-                button("🌐 " + t(11) + ": " + languageName(),
-                    this::chooseLanguage),
-                lp(-1, 52)
-            );
-
-            content.addView(
-                button("🎨 " + t(12), this::chooseTheme),
-                lp(-1, 52)
-            );
-
-            content.addView(
-                button("🎯 " + t(10), this::editGoal),
-                lp(-1, 52)
-            );
-
-            content.addView(
-                button("⚖️ " + t(20), this::editWeight),
-                lp(-1, 52)
-            );
-
-            content.addView(
-                button("👟 " + t(21), this::editStride),
-                lp(-1, 52)
-            );
-
-            content.addView(
-                button("↻ " + t(19), this::resetToday),
-                lp(-1, 52)
-            );
-
-            content.addView(
-                button("ℹ️ " + t(5), () -> showPage(5)),
-                lp(-1, 52)
-            );
-
-        } else {
-
-            content.addView(text("ℹ️ " + t(30), 26, accent, true));
-
-            cardAdd(content,
-                text("StepFit PRO — " + t(31), 18, Color.WHITE, false));
-
-            cardAdd(content,
-                text("Free offline step counter. Uses your phone's built-in " +
-                    "step sensor. Step totals, distance and calories are estimates.",
-                    15, Color.LTGRAY, false));
-
-            cardAdd(content,
-                text("Background counting may be restricted by Android/Oppo " +
-                    "battery settings.", 14, Color.LTGRAY, false));
+        switch (page) {
+            case 0:
+                showHome();
+                break;
+            case 1:
+                showProgress();
+                break;
+            case 2:
+                showHistory();
+                break;
+            case 3:
+                showAbout();
+                break;
+            default:
+                showSettings();
+                break;
         }
     }
 
-    private void drawBars(LinearLayout parent) {
-        long max = Math.max(1, highestDay());
-
-        for (int i = 6; i >= 0; i--) {
-            String d = dayKey(i);
-
-            long n = d.equals(today())
-                ? steps()
-                : prefs.getLong("history_" + d, 0);
-
-            parent.addView(text(d + "  " + n + " steps",
-                13, Color.WHITE, false));
-
-            ProgressBar bar = new ProgressBar(
-                this, null, android.R.attr.progressBarStyleHorizontal
-            );
-
-            bar.setMax(100);
-            bar.setProgress((int)Math.min(100, n * 100 / max));
-            parent.addView(bar, lp(-1, 12));
-        }
+    private int getSteps() {
+        return prefs.getInt("today_steps",
+                (int) prefs.getLong("today_steps", 0));
     }
 
-    private String dayKey(int daysAgo) {
+    private void showHome() {
+        int steps = getSteps();
+        int goal = prefs.getInt("goal", 9000);
+        float weight = prefs.getFloat("weight", 70f);
+        float stride = prefs.getFloat("stride", 75f);
+
+        double distanceKm = steps * stride / 100000.0;
+        double calories = steps * weight * 0.0004;
+
+        addCard(t(6), String.format(Locale.US, "%,d", steps));
+        addCard(t(1), String.format(Locale.US, "%.2f km", distanceKm));
+        addCard(t(2), String.format(Locale.US, "%.0f kcal", calories));
+        addCard(t(9), goal <= 0 ? "No limit" : steps + " / " + goal);
+
+        int percent = goal <= 0 ? 0 :
+                Math.min(100, (int) (steps * 100.0 / goal));
+
+        ProgressBar bar = new ProgressBar(
+            this, null, android.R.attr.progressBarStyleHorizontal
+        );
+        bar.setMax(100);
+        bar.setProgress(percent);
+        content.addView(bar, lp(-1, 22));
+
+        content.addView(text(
+            goal <= 0 ? t(16) : percent + "% " + t(26),
+            17, accent, true
+        ));
+
+        statusView = text(
+            getPackageManager().hasSystemFeature(
+                PackageManager.FEATURE_SENSOR_STEP_COUNTER
+            ) ? t(17) : t(18),
+            14, Color.LTGRAY, false
+        );
+        content.addView(statusView);
+
+        Button refresh = new Button(this);
+        refresh.setText("Refresh");
+        refresh.setOnClickListener(v -> showPage(0));
+        content.addView(refresh, lp(-1, 48));
+    }
+
+    private void showProgress() {
+        int steps = getSteps();
+        int goal = prefs.getInt("goal", 9000);
+
+        addCard(t(27), String.format(Locale.US, "%,d", steps));
+        addCard(t(26), goal <= 0 ? "No goal set" :
+                Math.min(100, steps * 100 / Math.max(1, goal)) + "%");
+
+        int total = 0;
+        int highest = 0;
+
+        for (int i = 0; i < 7; i++) {
+            String date = dateMinus(i);
+            int value = (int) prefs.getLong("history_" + date, 0);
+
+            if (i == 0) value = steps;
+
+            total += value;
+            highest = Math.max(highest, value);
+
+            TextView day = text(
+                date + "    " + value + " steps",
+                14, Color.WHITE, false
+            );
+            day.setBackground(shape(card, 12));
+            content.addView(day, lp(-1, 44));
+        }
+
+        addCard(t(28), String.valueOf(total / 7));
+        addCard(t(29), String.valueOf(highest));
+    }
+
+    private String dateMinus(int days) {
         Calendar c = Calendar.getInstance();
-        c.add(Calendar.DAY_OF_YEAR, -daysAgo);
-
+        c.add(Calendar.DAY_OF_YEAR, -days);
         return new SimpleDateFormat("yyyy-MM-dd", Locale.US)
-            .format(c.getTime());
+                .format(c.getTime());
     }
 
-    private long weeklyAverage() {
-        long total = 0;
+    private void showHistory() {
+        content.addView(text(
+            t(15), 22, accent, true
+        ));
 
-        for (int i = 0; i < 7; i++) {
-            String d = dayKey(i);
+        for (int i = 0; i < 30; i++) {
+            String date = dateMinus(i);
+            long count = prefs.getLong("history_" + date, 0);
 
-            total += d.equals(today()
-                ? steps()
-                : prefs.getLong("history_" + d, 0));
-        }
-
-        return total / 7;
-    }
-
-    private long highestDay() {
-        long max = 0;
-
-        for (int i = 0; i < 7; i++) {
-            String d = dayKey(i);
-
-            max = Math.max(max, d.equals(today()
-                ? steps()
-                : prefs.getLong("history_" + d, 0)));
-        }
-
-        return max;
-    }
-
-    private String sensorStatus() {
-        SensorManager sm =
-            (SensorManager)getSystemService(SENSOR_SERVICE);
-
-        return sm != null &&
-            sm.getDefaultSensor(Sensor.TYPE_STEP_COUNTER) != null
-            ? "● " + t(17)
-            : "● " + t(18);
-    }
-
-    private String languageName() {
-        for (int i = 0; i < langCodes.length; i++) {
-            if (langCodes[i].equals(language)) {
-                return langNames[i];
+            if (i == 0) {
+                count = getSteps();
             }
-        }
 
-        return "English";
+            TextView item = text(
+                date + "     " + count + " steps",
+                15, Color.WHITE, false
+            );
+
+            item.setBackground(shape(card, 12));
+            LinearLayout.LayoutParams p = lp(-1, 46);
+            p.setMargins(0, dp(3), 0, dp(3));
+            content.addView(item, p);
+        }
+    }
+
+    private void showSettings() {
+        content.addView(text(
+            t(4), 24, accent, true
+        ));
+
+        Button goalButton = new Button(this);
+        goalButton.setText(t(10));
+        goalButton.setOnClickListener(v -> editNumber(
+            t(35), "goal", 9000
+        ));
+        content.addView(goalButton, lp(-1, 50));
+
+        Button weightButton = new Button(this);
+        weightButton.setText(t(20));
+        weightButton.setOnClickListener(v -> editDecimal(
+            t(20), "weight", 70f
+        ));
+        content.addView(weightButton, lp(-1, 50));
+
+        Button strideButton = new Button(this);
+        strideButton.setText(t(21));
+        strideButton.setOnClickListener(v -> editDecimal(
+            t(21), "stride", 75f
+        ));
+        content.addView(strideButton, lp(-1, 50));
+
+        Button languageButton = new Button(this);
+        languageButton.setText(t(11));
+        languageButton.setOnClickListener(v -> chooseLanguage());
+        content.addView(languageButton, lp(-1, 50));
+
+        Button themeButton = new Button(this);
+        themeButton.setText(t(12));
+        themeButton.setOnClickListener(v -> chooseTheme());
+        content.addView(themeButton, lp(-1, 50));
+
+        Button resetButton = new Button(this);
+        resetButton.setText(t(19));
+        resetButton.setOnClickListener(v -> new AlertDialog.Builder(this)
+            .setTitle(t(19))
+            .setMessage("Reset today's step count?")
+            .setNegativeButton(t(14), null)
+            .setPositiveButton("Reset", (d, w) -> {
+                prefs.edit()
+                    .putInt("today_steps", 0)
+                    .putLong("today_steps", 0)
+                    .putLong("base_steps", -1)
+                    .putLong("last_raw", -1)
+                    .apply();
+                showPage(0);
+            })
+            .show());
+        content.addView(resetButton, lp(-1, 50));
+    }
+
+    private void editNumber(String title, String key, int value) {
+        EditText input = new EditText(this);
+        input.setInputType(2);
+        input.setText(String.valueOf(prefs.getInt(key, value)));
+
+        new AlertDialog.Builder(this)
+            .setTitle(title)
+            .setView(input)
+            .setNegativeButton(t(14), null)
+            .setPositiveButton(t(13), (d, w) -> {
+                try {
+                    int n = Integer.parseInt(
+                        input.getText().toString().trim()
+                    );
+                    prefs.edit().putInt(key, Math.max(0, n)).apply();
+                    showPage(page);
+                } catch (Exception ignored) {}
+            })
+            .show();
+    }
+
+    private void editDecimal(String title, String key, float value) {
+        EditText input = new EditText(this);
+        input.setInputType(8194);
+        input.setText(String.valueOf(prefs.getFloat(key, value)));
+
+        new AlertDialog.Builder(this)
+            .setTitle(title)
+            .setView(input)
+            .setNegativeButton(t(14), null)
+            .setPositiveButton(t(13), (d, w) -> {
+                try {
+                    float n = Float.parseFloat(
+                        input.getText().toString().trim()
+                    );
+                    if (n > 0) {
+                        prefs.edit().putFloat(key, n).apply();
+                        showPage(page);
+                    }
+                } catch (Exception ignored) {}
+            })
+            .show();
     }
 
     private void chooseLanguage() {
@@ -571,161 +497,63 @@ public class MainActivity extends Activity {
             .setTitle(t(32))
             .setItems(langNames, (d, which) -> {
                 language = langCodes[which];
-
-                prefs.edit()
-                    .putString("language", language)
-                    .apply();
-
+                prefs.edit().putString("language", language).apply();
                 buildShell();
                 showPage(page);
             })
-            .setNegativeButton(t(14), null)
             .show();
     }
 
     private void chooseTheme() {
-        String[] themes = {t(22), t(23), t(24), t(25)};
+        String[] themes = {
+            t(22), t(23), t(24), t(25)
+        };
 
         new AlertDialog.Builder(this)
             .setTitle(t(33))
-            .setItems(themes, (d, w) -> {
-                theme = w;
-
-                prefs.edit()
-                    .putInt("theme", theme)
-                    .apply();
-
+            .setItems(themes, (d, which) -> {
+                theme = which;
+                prefs.edit().putInt("theme", theme).apply();
                 applyTheme();
                 buildShell();
                 showPage(page);
             })
-            .setNegativeButton(t(14), null)
             .show();
     }
 
-    private void editGoal() {
-        EditText input = new EditText(this);
-        input.setInputType(2);
-        input.setHint(t(35));
-        input.setText(String.valueOf(goal()));
+    private void showAbout() {
+        content.addView(text(
+            t(30), 25, accent, true
+        ));
 
-        new AlertDialog.Builder(this)
-            .setTitle(t(10))
-            .setView(input)
-            .setPositiveButton(t(13), (d, w) -> {
-                try {
-                    int value = Math.max(
-                        0,
-                        Integer.parseInt(input.getText().toString().trim())
-                    );
-
-                    prefs.edit().putInt("goal", value).apply();
-                    showPage(page);
-
-                } catch (Exception e) {
-                    Toast.makeText(this, "Enter a valid number",
-                        Toast.LENGTH_SHORT).show();
-                }
-            })
-            .setNegativeButton(t(14), null)
-            .show();
-    }
-
-    private void editWeight() {
-        EditText input = new EditText(this);
-        input.setInputType(8194);
-        input.setText(String.valueOf(weight()));
-
-        new AlertDialog.Builder(this)
-            .setTitle(t(20))
-            .setView(input)
-            .setPositiveButton(t(13), (d, w) -> {
-                try {
-                    float val = Float.parseFloat(
-                        input.getText().toString()
-                    );
-
-                    if (val > 0 && val < 400) {
-                        prefs.edit()
-                            .putFloat("weight_kg", val)
-                            .apply();
-                    }
-
-                    showPage(page);
-
-                } catch (Exception ignored) {}
-            })
-            .setNegativeButton(t(14), null)
-            .show();
-    }
-
-    private void editStride() {
-        EditText input = new EditText(this);
-        input.setInputType(8194);
-        input.setText(
-            String.valueOf(prefs.getFloat("stride_cm", 75f))
-        );
-
-        new AlertDialog.Builder(this)
-            .setTitle(t(21))
-            .setView(input)
-            .setPositiveButton(t(13), (d, w) -> {
-                try {
-                    float val = Float.parseFloat(
-                        input.getText().toString()
-                    );
-
-                    if (val > 20 && val < 200) {
-                        prefs.edit()
-                            .putFloat("stride_cm", val)
-                            .apply();
-                    }
-
-                    showPage(page);
-
-                } catch (Exception ignored) {}
-            })
-            .setNegativeButton(t(14), null)
-            .show();
-    }
-
-    private void resetToday() {
-        new AlertDialog.Builder(this)
-            .setTitle(t(19))
-            .setMessage("Reset today's displayed step count?")
-            .setPositiveButton("Reset", (d, w) -> {
-                prefs.edit()
-                    .putLong("today_steps", 0)
-                    .putLong("base_steps", -1)
-                    .putLong("last_raw", -1)
-                    .apply();
-
-                showPage(0);
-            })
-            .setNegativeButton(t(14), null)
-            .show();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-
-        if (content != null) {
-            showPage(page);
-        }
+        content.addView(text(
+            "StepFit PRO\n\n" +
+            "An offline step counter for Android.\n" +
+            "Tracks steps, distance and estimated calories.\n\n" +
+            "Steps are not limited by the daily goal.",
+            17, Color.WHITE, false
+        ));
     }
 
     @Override
     public void onRequestPermissionsResult(
-        int req, String[] permissions, int[] results
+        int requestCode,
+        String[] permissions,
+        int[] grantResults
     ) {
-        super.onRequestPermissionsResult(req, permissions, results);
+        super.onRequestPermissionsResult(
+            requestCode, permissions, grantResults
+        );
 
-        if (req == 1001 &&
-            (results.length == 0 ||
-            results[0] != PackageManager.PERMISSION_GRANTED)) {
-
-            Toast.makeText(this, t(36), Toast.LENGTH_LONG).show();
+        if (requestCode == 1001) {
+            if (grantResults.length > 0 &&
+                grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                showPage(page);
+            } else {
+                Toast.makeText(
+                    this, t(36), Toast.LENGTH_LONG
+                ).show();
+            }
         }
     }
 }
