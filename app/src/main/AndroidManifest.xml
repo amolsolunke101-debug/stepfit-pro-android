@@ -1,22 +1,39 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-<application
-    android:allowBackup="true"
-    android:label="StepFit PRO"
-    android:theme="@android:style/Theme.Material.Light.NoActionBar"
-    android:usesCleartextTraffic="true">
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 
-    <activity
-        android:name=".MainActivity"
-        android:exported="true">
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
 
-    </activity>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-</application>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <application
+        android:allowBackup="true"
+        android:label="StepFit PRO"
+        android:theme="@android:style/Theme.Material.NoActionBar"
+        android:usesCleartextTraffic="false">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+
+        <service
+            android:name=".StepCounterService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="health" />
+
+    </application>
 
 </manifest>
