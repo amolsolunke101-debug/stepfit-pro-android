@@ -21,8 +21,8 @@ import java.util.Locale;
 public class StepCounterService extends Service
         implements SensorEventListener {
 
-    private static final int NOTIFICATION_ID = 4817;
     private static final String CHANNEL_ID = "stepfit_counter";
+    private static final int NOTIFICATION_ID = 4817;
 
     private SensorManager sensorManager;
     private Sensor stepSensor;
@@ -32,51 +32,52 @@ public class StepCounterService extends Service
     public void onCreate() {
         super.onCreate();
 
-        prefs = getSharedPreferences(
-                "StepFitData",
-                MODE_PRIVATE
-        );
+        prefs = getSharedPreferences("StepFitData", MODE_PRIVATE);
 
         createNotificationChannel();
 
-        Notification notification = buildNotification();
+        // Foreground service notification
+        startForeground(NOTIFICATION_ID, buildNotification(0));
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForeground(NOTIFICATION_ID, notification);
-        } else {
-            startForeground(NOTIFICATION_ID, notification);
-        }
-
-        sensorManager = (SensorManager)
-                getSystemService(SENSOR_SERVICE);
+        sensorManager =
+                (SensorManager) getSystemService(SENSOR_SERVICE);
 
         if (sensorManager != null) {
             stepSensor = sensorManager.getDefaultSensor(
                     Sensor.TYPE_STEP_COUNTER
             );
-
-            if (stepSensor != null) {
-                sensorManager.registerListener(
-                        this,
-                        stepSensor,
-                        SensorManager.SENSOR_DELAY_NORMAL
-                );
-            }
         }
+
+        prefs.edit()
+                .putBoolean("sensor_available", stepSensor != null)
+                .apply();
+
+        if (stepSensor != null) {
+            sensorManager.registerListener(
+                    this,
+                    stepSensor,
+                    SensorManager.SENSOR_DELAY_NORMAL
+            );
+        }
+    }
+
+    private String getToday() {
+        return new SimpleDateFormat(
+                "yyyy-MM-dd",
+                Locale.US
+        ).format(new Date());
     }
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-
-            NotificationChannel channel =
-                    new NotificationChannel(
-                            CHANNEL_ID,
-                            "StepFit PRO Step Counter",
-                            NotificationManager.IMPORTANCE_LOW
-                    );
+            NotificationChannel channel = new NotificationChannel(
+                    CHANNEL_ID,
+                    "StepFit PRO Step Counter",
+                    NotificationManager.IMPORTANCE_LOW
+            );
 
             channel.setDescription(
-                    "Keeps step counting active in the background"
+                    "Keeps StepFit PRO step counting active"
             );
 
             NotificationManager manager =
@@ -88,19 +89,21 @@ public class StepCounterService extends Service
         }
     }
 
-    private Notification buildNotification() {
-
+    private Notification buildNotification(long steps) {
         Intent intent = new Intent(this, MainActivity.class);
 
-        PendingIntent pendingIntent =
-                PendingIntent.getActivity(
-                        this,
-                        0,
-                        intent,
-                        PendingIntent.FLAG_UPDATE_CURRENT
-                                | (Build.VERSION.SDK_INT >= 23
-                                ? PendingIntent.FLAG_IMMUTABLE : 0)
-                );
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            flags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                this,
+                0,
+                intent,
+                flags
+        );
 
         Notification.Builder builder;
 
@@ -112,41 +115,39 @@ public class StepCounterService extends Service
 
         return builder
                 .setContentTitle("StepFit PRO")
-                .setContentText("Step counting is active")
+                .setContentText(
+                        String.format(
+                                Locale.getDefault(),
+                                "Today's steps: %,d",
+                                steps
+                        )
+                )
                 .setSmallIcon(android.R.drawable.ic_menu_directions)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
                 .build();
     }
 
-    private String getTodayDate() {
-        return new SimpleDateFormat(
-                "yyyy-MM-dd",
-                Locale.US
-        ).format(new Date());
-    }
-
     @Override
     public void onSensorChanged(SensorEvent event) {
-
-        if (event.sensor.getType() != Sensor.TYPE_STEP_COUNTER) {
+        if (event.sensor.getType() != Sensor.TYPE_STEP_COUNTER
+                || event.values == null
+                || event.values.length == 0) {
             return;
         }
 
         long rawSteps = (long) event.values[0];
 
-        String today = getTodayDate();
-
+        String today = getToday();
         String savedDate = prefs.getString("date", "");
 
-        long todaySteps = prefs.getLong("today_steps", 0);
-
-        long baseSteps = prefs.getLong("base_steps", -1);
-
-        long lastRawSteps = prefs.getLong("last_raw", -1);
+        long todaySteps = prefs.getLong("today_steps", 0L);
+        long baseSteps = prefs.getLong("base_steps", -1L);
+        long lastRaw = prefs.getLong("last_raw", -1L);
 
         SharedPreferences.Editor editor = prefs.edit();
 
+        // New day: save previous day's total and start a new baseline.
         if (!today.equals(savedDate)) {
 
             if (!savedDate.isEmpty()) {
@@ -156,21 +157,25 @@ public class StepCounterService extends Service
                 );
             }
 
-            todaySteps = 0;
-            baseSteps = -1;
-            lastRawSteps = -1;
+            todaySteps = 0L;
+            baseSteps = rawSteps;
+            lastRaw = rawSteps;
 
-            editor.putString("date", today);
+            editor.putLong("today_steps", 0L);
         }
 
-        if (baseSteps < 0 || lastRawSteps < 0
-                || rawSteps < lastRawSteps) {
+        // First reading: establish baseline.
+        if (baseSteps < 0L || lastRaw < 0L) {
+            baseSteps = rawSteps;
+            lastRaw = rawSteps;
+        }
 
+        // Handle sensor counter reset.
+        if (rawSteps < lastRaw) {
             baseSteps = rawSteps - todaySteps;
         }
 
-        if (lastRawSteps < 0 || rawSteps >= lastRawSteps) {
-
+        if (rawSteps >= baseSteps) {
             todaySteps = Math.max(
                     todaySteps,
                     rawSteps - baseSteps
@@ -180,13 +185,34 @@ public class StepCounterService extends Service
         editor.putLong("today_steps", todaySteps);
         editor.putLong("base_steps", baseSteps);
         editor.putLong("last_raw", rawSteps);
-
+        editor.putString("date", today);
+        editor.putBoolean("sensor_available", true);
         editor.apply();
+
+        // Notify the app screens that the count has changed.
+        Intent updateIntent = new Intent(
+                "com.amolsolunke.stepfitpro.STEPS_UPDATED"
+        );
+
+        updateIntent.setPackage(getPackageName());
+        sendBroadcast(updateIntent);
+
+        // Update persistent notification.
+        NotificationManager notificationManager =
+                (NotificationManager)
+                        getSystemService(NOTIFICATION_SERVICE);
+
+        if (notificationManager != null) {
+            notificationManager.notify(
+                    NOTIFICATION_ID,
+                    buildNotification(todaySteps)
+            );
+        }
     }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
-        // No action required.
+        // No additional action required.
     }
 
     @Override
@@ -200,7 +226,6 @@ public class StepCounterService extends Service
 
     @Override
     public void onDestroy() {
-
         if (sensorManager != null) {
             sensorManager.unregisterListener(this);
         }
