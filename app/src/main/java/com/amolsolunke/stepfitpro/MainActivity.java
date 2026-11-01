@@ -238,7 +238,10 @@ public class MainActivity extends Activity {
     }
 
     private int getSteps() {
-        long value = prefs.getLong("today_steps", prefs.getInt("today_steps", 0));
+        // SharedPreferences may contain an Integer from an older app version
+        // or a Long from the updated service. Read either type safely.
+        Object stored = prefs.getAll().get("today_steps");
+        long value = stored instanceof Number ? ((Number) stored).longValue() : 0L;
         if (value < 0) value = 0;
         return value > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) value;
     }
