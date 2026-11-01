@@ -1,5 +1,6 @@
 package com.amolsolunke.stepfitpro;
 
+import android.Manifest;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -7,6 +8,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -18,223 +20,164 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-public class StepCounterService extends Service
-        implements SensorEventListener {
-
+public class StepCounterService extends Service implements SensorEventListener {
     private static final String CHANNEL_ID = "stepfit_counter";
     private static final int NOTIFICATION_ID = 4817;
+    private static final String ACTION_STEPS_UPDATED = "com.amolsolunke.stepfitpro.STEPS_UPDATED";
 
     private SensorManager sensorManager;
     private Sensor stepSensor;
     private SharedPreferences prefs;
+    private long lastNotificationSteps = -1;
 
     @Override
     public void onCreate() {
         super.onCreate();
-
         prefs = getSharedPreferences("StepFitData", MODE_PRIVATE);
-
         createNotificationChannel();
 
-        // Foreground service notification
-        startForeground(NOTIFICATION_ID, buildNotification(0));
+        // Android requires a foreground notification for a foreground service.
+        startForeground(NOTIFICATION_ID, buildNotification(
+                Math.max(0L, prefs.getLong("today_steps", prefs.getInt("today_steps", 0)))
+        ));
 
-        sensorManager =
-                (SensorManager) getSystemService(SENSOR_SERVICE);
-
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         if (sensorManager != null) {
-            stepSensor = sensorManager.getDefaultSensor(
-                    Sensor.TYPE_STEP_COUNTER
-            );
+            stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
         }
 
-        prefs.edit()
-                .putBoolean("sensor_available", stepSensor != null)
-                .apply();
+        boolean permissionGranted = Build.VERSION.SDK_INT < 29 ||
+                checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED;
+        boolean available = stepSensor != null && permissionGranted;
+        prefs.edit().putBoolean("sensor_available", available).apply();
 
-        if (stepSensor != null) {
-            sensorManager.registerListener(
-                    this,
-                    stepSensor,
-                    SensorManager.SENSOR_DELAY_NORMAL
-            );
+        if (available) {
+            boolean registered = sensorManager.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_NORMAL);
+            prefs.edit().putBoolean("sensor_registered", registered).apply();
+        } else {
+            prefs.edit().putBoolean("sensor_registered", false).apply();
         }
+        broadcastUpdate();
     }
 
     private String getToday() {
-        return new SimpleDateFormat(
-                "yyyy-MM-dd",
-                Locale.US
-        ).format(new Date());
+        return new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
     }
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID,
-                    "StepFit PRO Step Counter",
-                    NotificationManager.IMPORTANCE_LOW
-            );
-
-            channel.setDescription(
-                    "Keeps StepFit PRO step counting active"
-            );
-
-            NotificationManager manager =
-                    getSystemService(NotificationManager.class);
-
-            if (manager != null) {
-                manager.createNotificationChannel(channel);
-            }
+                    CHANNEL_ID, "StepFit PRO Step Counter", NotificationManager.IMPORTANCE_LOW);
+            channel.setDescription("Keeps StepFit PRO step counting active");
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            if (manager != null) manager.createNotificationChannel(channel);
         }
     }
 
     private Notification buildNotification(long steps) {
         Intent intent = new Intent(this, MainActivity.class);
-
         int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, flags);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            flags |= PendingIntent.FLAG_IMMUTABLE;
-        }
+        Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                ? new Notification.Builder(this, CHANNEL_ID)
+                : new Notification.Builder(this);
 
-        PendingIntent pendingIntent = PendingIntent.getActivity(
-                this,
-                0,
-                intent,
-                flags
-        );
-
-        Notification.Builder builder;
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            builder = new Notification.Builder(this, CHANNEL_ID);
-        } else {
-            builder = new Notification.Builder(this);
-        }
-
-        return builder
-                .setContentTitle("StepFit PRO")
-                .setContentText(
-                        String.format(
-                                Locale.getDefault(),
-                                "Today's steps: %,d",
-                                steps
-                        )
-                )
+        return builder.setContentTitle("StepFit PRO")
+                .setContentText(String.format(Locale.getDefault(), "Today's steps: %,d", Math.max(0L, steps)))
                 .setSmallIcon(android.R.drawable.ic_menu_directions)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
                 .build();
     }
 
+    private void broadcastUpdate() {
+        Intent updateIntent = new Intent(ACTION_STEPS_UPDATED);
+        updateIntent.setPackage(getPackageName());
+        sendBroadcast(updateIntent);
+    }
+
+    private void saveDayIfNeeded(String today, String savedDate, long steps) {
+        if (!savedDate.isEmpty() && !savedDate.equals(today)) {
+            prefs.edit().putLong("history_" + savedDate, Math.max(0L, steps)).apply();
+        }
+    }
+
     @Override
     public void onSensorChanged(SensorEvent event) {
-        if (event.sensor.getType() != Sensor.TYPE_STEP_COUNTER
-                || event.values == null
-                || event.values.length == 0) {
-            return;
-        }
+        if (event == null || event.sensor == null ||
+                event.sensor.getType() != Sensor.TYPE_STEP_COUNTER ||
+                event.values == null || event.values.length == 0) return;
 
-        long rawSteps = (long) event.values[0];
-
+        long rawSteps = Math.max(0L, (long) event.values[0]);
         String today = getToday();
         String savedDate = prefs.getString("date", "");
-
-        long todaySteps = prefs.getLong("today_steps", 0L);
+        long todaySteps = Math.max(0L, prefs.getLong("today_steps", prefs.getInt("today_steps", 0)));
         long baseSteps = prefs.getLong("base_steps", -1L);
         long lastRaw = prefs.getLong("last_raw", -1L);
 
-        SharedPreferences.Editor editor = prefs.edit();
-
-        // New day: save previous day's total and start a new baseline.
         if (!today.equals(savedDate)) {
-
-            if (!savedDate.isEmpty()) {
-                editor.putLong(
-                        "history_" + savedDate,
-                        todaySteps
-                );
-            }
-
+            saveDayIfNeeded(today, savedDate, todaySteps);
             todaySteps = 0L;
             baseSteps = rawSteps;
             lastRaw = rawSteps;
-
-            editor.putLong("today_steps", 0L);
-        }
-
-        // First reading: establish baseline.
-        if (baseSteps < 0L || lastRaw < 0L) {
+        } else if (baseSteps < 0L || lastRaw < 0L) {
+            // First event after installation or reset: establish baseline.
             baseSteps = rawSteps;
             lastRaw = rawSteps;
-        }
-
-        // Handle sensor counter reset.
-        if (rawSteps < lastRaw) {
+        } else if (rawSteps < lastRaw) {
+            // Sensor counter restarted; preserve today's accumulated total.
             baseSteps = rawSteps - todaySteps;
         }
 
-        if (rawSteps >= baseSteps) {
-            todaySteps = Math.max(
-                    todaySteps,
-                    rawSteps - baseSteps
-            );
-        }
+        long calculated = Math.max(0L, rawSteps - baseSteps);
+        todaySteps = Math.max(todaySteps, calculated);
 
-        editor.putLong("today_steps", todaySteps);
-        editor.putLong("base_steps", baseSteps);
-        editor.putLong("last_raw", rawSteps);
-        editor.putString("date", today);
-        editor.putBoolean("sensor_available", true);
-        editor.apply();
+        prefs.edit()
+                .putLong("today_steps", todaySteps)
+                .putLong("base_steps", baseSteps)
+                .putLong("last_raw", rawSteps)
+                .putString("date", today)
+                .putBoolean("sensor_available", true)
+                .putBoolean("sensor_registered", true)
+                .apply();
 
-        // Notify the app screens that the count has changed.
-        Intent updateIntent = new Intent(
-                "com.amolsolunke.stepfitpro.STEPS_UPDATED"
-        );
+        broadcastUpdate();
 
-        updateIntent.setPackage(getPackageName());
-        sendBroadcast(updateIntent);
-
-        // Update persistent notification.
-        NotificationManager notificationManager =
-                (NotificationManager)
-                        getSystemService(NOTIFICATION_SERVICE);
-
-        if (notificationManager != null) {
-            notificationManager.notify(
-                    NOTIFICATION_ID,
-                    buildNotification(todaySteps)
-            );
+        if (lastNotificationSteps < 0 || Math.abs(todaySteps - lastNotificationSteps) >= 5) {
+            NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (manager != null) manager.notify(NOTIFICATION_ID, buildNotification(todaySteps));
+            lastNotificationSteps = todaySteps;
         }
     }
 
     @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-        // No additional action required.
-    }
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 
     @Override
-    public int onStartCommand(
-            Intent intent,
-            int flags,
-            int startId
-    ) {
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        // Re-register after a sticky service restart if needed.
+        if (sensorManager == null) sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        if (stepSensor == null && sensorManager != null) {
+            stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
+        }
+        boolean permissionGranted = Build.VERSION.SDK_INT < 29 ||
+                checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED;
+        if (sensorManager != null && stepSensor != null && permissionGranted) {
+            sensorManager.unregisterListener(this);
+            boolean registered = sensorManager.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_NORMAL);
+            prefs.edit().putBoolean("sensor_available", true).putBoolean("sensor_registered", registered).apply();
+        }
         return START_STICKY;
     }
 
     @Override
     public void onDestroy() {
-        if (sensorManager != null) {
-            sensorManager.unregisterListener(this);
-        }
-
+        if (sensorManager != null) sensorManager.unregisterListener(this);
         super.onDestroy();
     }
 
     @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
+    public IBinder onBind(Intent intent) { return null; }
 }
