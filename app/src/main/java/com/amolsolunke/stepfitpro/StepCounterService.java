@@ -38,7 +38,7 @@ public class StepCounterService extends Service implements SensorEventListener {
 
         // Android requires a foreground notification for a foreground service.
         startForeground(NOTIFICATION_ID, buildNotification(
-                Math.max(0L, prefs.getLong("today_steps", prefs.getInt("today_steps", 0)))
+                Math.max(0L, getStoredLong("today_steps", 0L))
         ));
 
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
@@ -62,6 +62,12 @@ public class StepCounterService extends Service implements SensorEventListener {
 
     private String getToday() {
         return new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
+    }
+
+    // Safely read a preference saved as either Integer or Long by older/newer builds.
+    private long getStoredLong(String key, long fallback) {
+        Object stored = prefs.getAll().get(key);
+        return stored instanceof Number ? ((Number) stored).longValue() : fallback;
     }
 
     private void createNotificationChannel() {
@@ -113,7 +119,7 @@ public class StepCounterService extends Service implements SensorEventListener {
         long rawSteps = Math.max(0L, (long) event.values[0]);
         String today = getToday();
         String savedDate = prefs.getString("date", "");
-        long todaySteps = Math.max(0L, prefs.getLong("today_steps", prefs.getInt("today_steps", 0)));
+        long todaySteps = Math.max(0L, getStoredLong("today_steps", 0L));
         long baseSteps = prefs.getLong("base_steps", -1L);
         long lastRaw = prefs.getLong("last_raw", -1L);
 
