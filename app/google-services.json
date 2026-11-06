@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "508780773891",
+    "project_id": "stepfit-pro-8e0ce",
+    "storage_bucket": "stepfit-pro-8e0ce.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:508780773891:android:0307b491b33ee404db0436",
+        "android_client_info": {
+          "package_name": "com.amolsolunke.stepfitpro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAFscRXby_dd3QzVoSDKPtFgI_rvimZOQk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
