@@ -159,18 +159,6 @@ public class MainActivity extends Activity {
         startStepService();
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == 1001) {
-            // Restart so the service can register the step sensor after permission is granted.
-            startStepService();
-            if (auth != null && auth.getCurrentUser() != null && content == null) {
-                openMainApp();
-            }
-        }
-    }
-
     private void showAuthScreen() {
         LinearLayout screen = column();
         screen.setGravity(Gravity.CENTER_HORIZONTAL);
