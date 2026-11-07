@@ -91,6 +91,29 @@ service cloud.firestore {
         && request.resource.data.participantUids.hasAny([request.auth.uid]));
     }
 
+    match /challenges/{challengeId}/dailyProgress/{entryId} {
+      function isParticipant() {
+        return activeUser()
+          && exists(/databases/$(database)/documents/challenges/$(challengeId))
+          && get(/databases/$(database)/documents/challenges/$(challengeId)).data.participantUids.hasAny([request.auth.uid]);
+      }
+
+      allow read: if activeUser();
+      // Device-submitted daily scores are intentionally labelled self-reported,
+      // not verified. A participant can write only their own UID/day entry.
+      allow create, update: if isParticipant()
+        && request.resource.data.keys().hasOnly(['uid', 'day', 'steps', 'updatedAt'])
+        && request.resource.data.uid == request.auth.uid
+        && entryId == request.auth.uid + '_' + request.resource.data.day
+        && request.resource.data.day is string
+        && request.resource.data.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}  }
+})
+        && request.resource.data.steps is int
+        && request.resource.data.steps >= 0
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if admin();
+    }
+
     match /leaderboards/{boardId} {
       allow read: if activeUser();
       allow write: if admin();
