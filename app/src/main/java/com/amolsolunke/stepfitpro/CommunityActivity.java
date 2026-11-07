@@ -178,9 +178,11 @@ public class CommunityActivity extends Activity {
                 AlertDialog.Builder dialog = new AlertDialog.Builder(this)
                     .setTitle(name == null ? "Challenge" : name)
                     .setMessage(message)
-                    .setPositiveButton(joined ? "Joined" : "Join challenge", (d, w) -> {
-                        if (!joined) StepFitCloud.joinChallenge(challengeId, this::result);
+                    .setPositiveButton(joined ? "Submit today's steps" : "Join challenge", (d, w) -> {
+                        if (joined) submitChallengeProgress(challengeId);
+                        else StepFitCloud.joinChallenge(challengeId, this::result);
                     })
+                    .setNeutralButton("Leaderboard", (d, w) -> showChallengeLeaderboard(challengeId))
                     .setNegativeButton("Close", null);
                 dialog.show();
             }).addOnFailureListener(e -> msg("Could not load challenge: " + e.getLocalizedMessage()));
@@ -189,6 +191,53 @@ public class CommunityActivity extends Activity {
     private long getLocalTodaySteps() {
         Object value = getSharedPreferences("StepFitData", MODE_PRIVATE).getAll().get("today_steps");
         return value instanceof Number ? Math.max(0L, ((Number)value).longValue()) : 0L;
+    }
+
+    private String todayKey() {
+        return new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            .format(new java.util.Date());
+    }
+
+    // Scores are submitted by each participant's device; they are not server-verified.
+    private void submitChallengeProgress(String challengeId) {
+        String uid = StepFitCloud.uid();
+        if (uid == null) { msg("Sign in first."); return; }
+        long steps = getLocalTodaySteps();
+        String day = todayKey();
+        java.util.Map<String,Object> data = new java.util.HashMap<>();
+        data.put("uid", uid);
+        data.put("day", day);
+        data.put("steps", steps);
+        data.put("updatedAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
+        FirebaseFirestore.getInstance().collection("challenges").document(challengeId)
+            .collection("dailyProgress").document(uid + "_" + day).set(data)
+            .addOnSuccessListener(v -> msg("Today's device step count submitted: " + steps))
+            .addOnFailureListener(e -> msg("Could not submit progress: " + e.getLocalizedMessage()));
+    }
+
+    private void showChallengeLeaderboard(String challengeId) {
+        String day = todayKey();
+        FirebaseFirestore.getInstance().collection("challenges").document(challengeId)
+            .collection("dailyProgress").whereEqualTo("day", day)
+            .orderBy("steps", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .limit(20).get()
+            .addOnSuccessListener(snapshot -> {
+                if (snapshot.isEmpty()) { msg("No submitted scores for today yet."); return; }
+                StringBuilder board = new StringBuilder();
+                int rank = 1;
+                for (com.google.firebase.firestore.DocumentSnapshot doc : snapshot.getDocuments()) {
+                    String uid = doc.getString("uid");
+                    Long steps = doc.getLong("steps");
+                    String shortId = uid == null ? "unknown" :
+                        (uid.length() > 10 ? uid.substring(0, 10) + "…" : uid);
+                    board.append(rank++).append(". ").append(shortId)
+                        .append(" — ").append(steps == null ? 0 : steps).append(" steps\\n");
+                }
+                new AlertDialog.Builder(this).setTitle("Today's leaderboard")
+                    .setMessage(board.toString() + "\\nScores are self-reported from devices and are not verified.")
+                    .setPositiveButton("Close", null).show();
+            })
+            .addOnFailureListener(e -> msg("Could not load leaderboard: " + e.getLocalizedMessage()));
     }
 
     private void createChallengeDialog() {
