@@ -97,6 +97,18 @@ public final class StepFitCloud {
           .addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()));
     }
 
+
+    public static void joinClub(String clubId, Result result) {
+        String id = uid();
+        if (id == null || clubId == null || clubId.trim().isEmpty()) {
+            result.done(false, "Sign in and choose a valid club."); return;
+        }
+        DB.collection("clubs").document(clubId.trim())
+          .update("memberUids", FieldValue.arrayUnion(id))
+          .addOnSuccessListener(v -> result.done(true, "Joined club."))
+          .addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()));
+    }
+
     public static void joinChallenge(String challengeId, Result result) {
         String id = uid();
         if (id == null || challengeId == null || challengeId.trim().isEmpty()) {
