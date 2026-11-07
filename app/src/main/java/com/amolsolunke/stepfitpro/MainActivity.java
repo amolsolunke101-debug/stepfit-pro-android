@@ -248,7 +248,7 @@ public class MainActivity extends Activity {
 
     private void showHome() {
         int steps = getSteps();
-        int goal = prefs.getInt("goal", 9000);
+        int goal = prefs.getInt("goal", 0);
         float weight = prefs.getFloat("weight", 70f);
         float stride = prefs.getFloat("stride", 75f);
         double distanceKm = steps * stride / 100000.0;
@@ -275,7 +275,7 @@ public class MainActivity extends Activity {
     }
 
     private void showProgress() {
-        int steps = getSteps(); int goal = prefs.getInt("goal", 9000);
+        int steps = getSteps(); int goal = prefs.getInt("goal", 0);
         addCard(t(27), String.format(Locale.US, "%,d", steps));
         addCard(t(26), goal <= 0 ? "No goal set" : Math.min(100, steps * 100 / Math.max(1, goal)) + "%");
         int total = 0, highest = 0;
@@ -311,7 +311,7 @@ public class MainActivity extends Activity {
     private void showSettings() {
         content.addView(text(t(4), 24, accent, true));
         Button goalButton = new Button(this); goalButton.setText(t(10));
-        goalButton.setOnClickListener(v -> editNumber(t(35), "goal", 9000));
+        goalButton.setOnClickListener(v -> editNumber(t(35), "goal", 0));
         content.addView(goalButton, lp(-1, 50));
         Button weightButton = new Button(this); weightButton.setText(t(20));
         weightButton.setOnClickListener(v -> editDecimal(t(20), "weight", 70f));
