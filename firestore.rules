@@ -98,7 +98,7 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/challenges/$(challengeId)).data.participantUids.hasAny([request.auth.uid]);
       }
 
-      allow read: if activeUser();
+      allow read: if isParticipant();
       // Device-submitted daily scores are intentionally labelled self-reported,
       // not verified. A participant can write only their own UID/day entry.
       allow create, update: if isParticipant()
