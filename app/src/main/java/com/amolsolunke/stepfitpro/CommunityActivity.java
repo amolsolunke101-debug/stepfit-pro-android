@@ -180,7 +180,10 @@ public class CommunityActivity extends Activity {
                     .setMessage(message)
                     .setPositiveButton(joined ? "Submit today's steps" : "Join challenge", (d, w) -> {
                         if (joined) submitChallengeProgress(challengeId);
-                        else StepFitCloud.joinChallenge(challengeId, this::result);
+                        else StepFitCloud.joinChallenge(challengeId, (ok, messageText) -> runOnUiThread(() -> {
+                            msg(messageText);
+                            if (ok) showChallengeDetails(challengeId);
+                        }));
                     })
                     .setNeutralButton("Leaderboard", (d, w) -> showChallengeLeaderboard(challengeId))
                     .setNegativeButton("Close", null);
