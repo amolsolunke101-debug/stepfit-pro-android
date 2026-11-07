@@ -30,6 +30,9 @@ public class CommunityActivity extends Activity {
         title.setTextColor(Color.WHITE); title.setTextSize(24); title.setGravity(Gravity.CENTER);
         box.addView(title);
         add("Send Friend Request", () -> field("Friend's User ID", id -> StepFitCloud.sendFriendRequest(id, this::result)));
+        add("Incoming Friend Requests", this::showFriendRequests);
+        add("Browse Clubs", this::showClubs);
+        add("Browse Challenges", this::showChallenges);
         add("Create a Club", () -> field("Club name", name -> StepFitCloud.createClub(name, this::result)));
         add("Join a Challenge", () -> field("Challenge ID", id -> StepFitCloud.joinChallenge(id, this::result)));
         add("My User ID", () -> {
@@ -41,6 +44,68 @@ public class CommunityActivity extends Activity {
         add("Back", this::finish);
         setContentView(box);
     }
+
+    private void showFriendRequests() {
+        String uid = StepFitCloud.uid();
+        if (uid == null) { msg("Sign in first."); return; }
+        FirebaseFirestore.getInstance().collection("friendRequests")
+            .whereEqualTo("toUid", uid).whereEqualTo("status", "pending")
+            .get().addOnSuccessListener(snapshot -> {
+                if (snapshot.isEmpty()) { msg("No pending friend requests."); return; }
+                java.util.List<com.google.firebase.firestore.DocumentSnapshot> docs = snapshot.getDocuments();
+                String[] labels = new String[docs.size()];
+                for (int i = 0; i < docs.size(); i++) {
+                    String from = docs.get(i).getString("fromUid");
+                    labels[i] = "Request from " + (from == null ? "unknown" : from);
+                }
+                new AlertDialog.Builder(this).setTitle("Friend Requests")
+                    .setItems(labels, (dialog, which) -> {
+                        String id = docs.get(which).getId();
+                        new AlertDialog.Builder(this).setTitle("Friend request")
+                            .setItems(new String[]{"Accept", "Reject"}, (d, choice) -> {
+                                String status = choice == 0 ? "accepted" : "rejected";
+                                FirebaseFirestore.getInstance().collection("friendRequests").document(id)
+                                    .update("status", status)
+                                    .addOnSuccessListener(v -> msg("Request " + status + "."))
+                                    .addOnFailureListener(e -> msg("Could not update request: " + e.getLocalizedMessage()));
+                            }).setNegativeButton("Cancel", null).show();
+                    }).setPositiveButton("Close", null).show();
+            }).addOnFailureListener(e -> msg("Could not load requests: " + e.getLocalizedMessage()));
+    }
+
+    private void showClubs() {
+        FirebaseFirestore.getInstance().collection("clubs").limit(50).get()
+            .addOnSuccessListener(snapshot -> {
+                if (snapshot.isEmpty()) { msg("No clubs are available yet."); return; }
+                java.util.List<String> lines = new java.util.ArrayList<>();
+                for (com.google.firebase.firestore.DocumentSnapshot doc : snapshot.getDocuments()) {
+                    String name = doc.getString("name");
+                    lines.add((name == null ? "Unnamed club" : name) + "  •  " + doc.getId());
+                }
+                new AlertDialog.Builder(this).setTitle("Available Clubs")
+                    .setItems(lines.toArray(new String[0]), null)
+                    .setPositiveButton("Close", null).show();
+            }).addOnFailureListener(e -> msg("Could not load clubs: " + e.getLocalizedMessage()));
+    }
+
+    private void showChallenges() {
+        FirebaseFirestore.getInstance().collection("challenges").limit(50).get()
+            .addOnSuccessListener(snapshot -> {
+                if (snapshot.isEmpty()) { msg("No challenges are available yet."); return; }
+                java.util.List<String> lines = new java.util.ArrayList<>();
+                java.util.List<String> ids = new java.util.ArrayList<>();
+                for (com.google.firebase.firestore.DocumentSnapshot doc : snapshot.getDocuments()) {
+                    String name = doc.getString("name");
+                    lines.add((name == null ? "Challenge" : name) + "  •  " + doc.getId());
+                    ids.add(doc.getId());
+                }
+                new AlertDialog.Builder(this).setTitle("Challenges")
+                    .setItems(lines.toArray(new String[0]), (dialog, which) ->
+                        StepFitCloud.joinChallenge(ids.get(which), this::result))
+                    .setNegativeButton("Close", null).show();
+            }).addOnFailureListener(e -> msg("Could not load challenges: " + e.getLocalizedMessage()));
+    }
+
     private void openAdmin() {
         StepFitCloud.isAdmin((allowed, message) -> runOnUiThread(() -> {
             if (!allowed) { msg(message); return; }
