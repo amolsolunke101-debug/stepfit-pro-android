@@ -507,6 +507,11 @@ public class MainActivity extends Activity {
                 showAuthScreen();
             });
             content.addView(signOut, lp(-1, 50));
+        } else {
+            Button signIn = new Button(this);
+            signIn.setText("Sign in to sync / use community");
+            signIn.setOnClickListener(v -> showAuthScreen());
+            content.addView(signIn, lp(-1, 50));
         }
         Button resetButton = new Button(this); resetButton.setText(t(19));
         resetButton.setOnClickListener(v -> new AlertDialog.Builder(this)
