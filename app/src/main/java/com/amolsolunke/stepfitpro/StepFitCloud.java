@@ -77,11 +77,31 @@ public final class StepFitCloud {
         if (id == null || targetUid == null || targetUid.trim().isEmpty() || id.equals(targetUid)) {
             result.done(false, "Enter another user's valid ID."); return;
         }
-        Map<String,Object> data = new HashMap<>();
-        data.put("fromUid", id); data.put("toUid", targetUid.trim());
-        data.put("status", "pending"); data.put("createdAt", FieldValue.serverTimestamp());
-        DB.collection("friendRequests").add(data)
-          .addOnSuccessListener(v -> result.done(true, "Friend request sent."))
+        String target = targetUid.trim();
+        // Check both directions to avoid duplicate pending requests.
+        com.google.android.gms.tasks.Task<com.google.firebase.firestore.QuerySnapshot> outgoing =
+            DB.collection("friendRequests").whereEqualTo("fromUid", id)
+                .whereEqualTo("toUid", target).whereEqualTo("status", "pending").get();
+        com.google.android.gms.tasks.Task<com.google.firebase.firestore.QuerySnapshot> incoming =
+            DB.collection("friendRequests").whereEqualTo("fromUid", target)
+                .whereEqualTo("toUid", id).whereEqualTo("status", "pending").get();
+        com.google.android.gms.tasks.Tasks.whenAllSuccess(outgoing, incoming)
+          .addOnSuccessListener(results -> {
+              boolean exists = false;
+              for (Object item : results) {
+                  if (!((com.google.firebase.firestore.QuerySnapshot)item).isEmpty()) exists = true;
+              }
+              if (exists) {
+                  result.done(false, "A pending friend request already exists.");
+                  return;
+              }
+              Map<String,Object> data = new HashMap<>();
+              data.put("fromUid", id); data.put("toUid", target);
+              data.put("status", "pending"); data.put("createdAt", FieldValue.serverTimestamp());
+              DB.collection("friendRequests").add(data)
+                .addOnSuccessListener(v -> result.done(true, "Friend request sent."))
+                .addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()));
+          })
           .addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()));
     }
 
