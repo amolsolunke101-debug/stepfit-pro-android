@@ -110,6 +110,27 @@ public class CommunityActivity extends Activity {
     }
 
 
+
+    private void createChallengeDialog() {
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(32, 12, 32, 0);
+        EditText name = new EditText(this); name.setHint("Challenge name");
+        EditText description = new EditText(this); description.setHint("Description");
+        EditText target = new EditText(this); target.setHint("Target steps");
+        target.setInputType(2);
+        form.addView(name); form.addView(description); form.addView(target);
+        new AlertDialog.Builder(this).setTitle("Create challenge").setView(form)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Create", (dialog, which) -> {
+                long steps = 0;
+                try { steps = Long.parseLong(target.getText().toString().trim()); }
+                catch (NumberFormatException ignored) {}
+                StepFitCloud.createChallenge(name.getText().toString(),
+                    description.getText().toString(), steps, this::result);
+            }).show();
+    }
+
     private void showAdminUsers() {
         FirebaseFirestore.getInstance().collection("users").limit(100).get()
             .addOnSuccessListener(snapshot -> {
@@ -142,8 +163,9 @@ public class CommunityActivity extends Activity {
         StepFitCloud.isAdmin((allowed, message) -> runOnUiThread(() -> {
             if (!allowed) { msg(message); return; }
             new AlertDialog.Builder(this).setTitle("Protected Admin Panel")
-              .setItems(new String[]{"Manage user list","Block user by UID","Unblock user by UID"}, (d, which) -> {
+              .setItems(new String[]{"Manage user list","Block user by UID","Unblock user by UID","Create challenge"}, (d, which) -> {
                   if (which == 0) showAdminUsers();
+                  else if (which == 3) createChallengeDialog();
                   else field("Target user's UID", id ->
                       StepFitCloud.setUserBlocked(id, which == 1, this::result));
               })
