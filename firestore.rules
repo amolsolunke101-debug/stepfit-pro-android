@@ -1,44 +1,79 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() { return request.auth != null; }
-    function admin() { return signedIn() && request.auth.token.admin == true; }
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function admin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
+    // A suspended account must not be able to use community/cloud features.
+    // Admin custom claims are assigned outside the client and cannot be forged
+    // by changing a Firestore profile document.
+    function activeUser() {
+      return signedIn() && (
+        admin()
+        || !exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.blocked != true
+      );
+    }
+
     match /users/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || admin());
-      allow create, update: if signedIn() && request.auth.uid == uid
-        && (!('blocked' in request.resource.data) || request.resource.data.blocked == resource.data.blocked);
-      allow update: if admin();
-      allow delete: if admin();
+      allow read: if activeUser() && (request.auth.uid == uid || admin());
+
+      // Users can edit their own profile, but cannot set/change suspension state.
+      allow create: if activeUser() && request.auth.uid == uid
+        && !('blocked' in request.resource.data);
+      allow update: if activeUser() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasNone(['blocked']);
+      allow update, delete: if admin();
+
       match /dailyStats/{day} {
-        allow read, write: if signedIn() && request.auth.uid == uid;
+        allow read, write: if activeUser() && request.auth.uid == uid;
       }
     }
+
     match /friendRequests/{requestId} {
-      allow create: if signedIn() && request.resource.data.fromUid == request.auth.uid
-        && request.resource.data.toUid is string && request.resource.data.status == 'pending';
-      allow read: if signedIn() && (resource.data.fromUid == request.auth.uid
-        || resource.data.toUid == request.auth.uid || admin());
-      allow update: if signedIn() && resource.data.toUid == request.auth.uid
+      allow create: if activeUser()
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.toUid is string
+        && request.resource.data.status == 'pending';
+      allow read: if activeUser() && (
+        resource.data.fromUid == request.auth.uid
+        || resource.data.toUid == request.auth.uid
+        || admin()
+      );
+      allow update: if activeUser()
+        && resource.data.toUid == request.auth.uid
         && request.resource.data.fromUid == resource.data.fromUid
-        && request.resource.data.toUid == resource.data.toUid;
-      allow delete: if admin() || (signedIn() && resource.data.fromUid == request.auth.uid);
+        && request.resource.data.toUid == resource.data.toUid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+      allow delete: if admin()
+        || (activeUser() && resource.data.fromUid == request.auth.uid);
     }
+
     match /clubs/{clubId} {
-      allow read: if signedIn();
-      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
-      allow update: if admin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
-      allow delete: if admin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
+      allow read: if activeUser();
+      allow create: if activeUser() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if admin()
+        || (activeUser() && resource.data.ownerUid == request.auth.uid
+          && request.resource.data.ownerUid == resource.data.ownerUid);
+      allow delete: if admin() || (activeUser() && resource.data.ownerUid == request.auth.uid);
     }
+
     match /challenges/{challengeId} {
-      allow read: if signedIn();
+      allow read: if activeUser();
       allow create, delete: if admin();
-      allow update: if admin() || (signedIn()
+      allow update: if admin() || (activeUser()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantUids'])
         && request.resource.data.participantUids.hasAll(resource.data.participantUids)
         && request.resource.data.participantUids.hasAny([request.auth.uid]));
     }
+
     match /leaderboards/{boardId} {
-      allow read: if signedIn();
+      allow read: if activeUser();
       allow write: if admin();
     }
   }
