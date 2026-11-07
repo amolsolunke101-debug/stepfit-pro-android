@@ -123,6 +123,15 @@ public class MainActivity extends Activity {
         theme = prefs.getInt("theme", 0);
         applyTheme();
         auth = FirebaseAuth.getInstance();
+
+        // Keep the local step counter independent of cloud login.
+        // It can count offline, even before a user signs in.
+        startStepService();
+        if (Build.VERSION.SDK_INT >= 29 &&
+            checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.ACTIVITY_RECOGNITION}, 1001);
+        }
+
         try {
             GoogleSignInOptions options = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id))
@@ -148,6 +157,18 @@ public class MainActivity extends Activity {
         buildShell();
         showPage(0);
         startStepService();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 1001) {
+            // Restart so the service can register the step sensor after permission is granted.
+            startStepService();
+            if (auth != null && auth.getCurrentUser() != null && content == null) {
+                openMainApp();
+            }
+        }
     }
 
     private void showAuthScreen() {
