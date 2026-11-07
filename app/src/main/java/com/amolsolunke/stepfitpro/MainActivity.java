@@ -197,7 +197,18 @@ public class MainActivity extends Activity {
             }
         });
         screen.addView(google, lp(-1, 52));
-        screen.addView(text("Your step counter data stays on this device when offline.", 13, Color.LTGRAY, false), lp(-1, 56));
+
+        // Cloud login is optional: users can use the offline pedometer without
+        // creating an account or providing an email address.
+        Button offline = new Button(this);
+        offline.setText("Continue offline");
+        offline.setOnClickListener(v -> {
+            buildShell();
+            showPage(0);
+            startStepService();
+        });
+        screen.addView(offline, lp(-1, 52));
+        screen.addView(text("Your steps stay on this device while offline. Sign in only when you want cloud sync and community features.", 13, Color.LTGRAY, false), lp(-1, 64));
         setContentView(screen);
         root = screen;
         content = null;
