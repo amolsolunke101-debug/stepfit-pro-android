@@ -9,9 +9,7 @@ service cloud.firestore {
       return signedIn() && request.auth.token.admin == true;
     }
 
-    // A suspended account must not be able to use community/cloud features.
-    // Admin custom claims are assigned outside the client and cannot be forged
-    // by changing a Firestore profile document.
+    // Suspended accounts cannot use cloud/community features.
     function activeUser() {
       return signedIn() && (
         admin()
@@ -22,8 +20,6 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if activeUser() && (request.auth.uid == uid || admin());
-
-      // Users can edit their own profile, but cannot set/change suspension state.
       allow create: if activeUser() && request.auth.uid == uid
         && !('blocked' in request.resource.data);
       allow update: if activeUser() && request.auth.uid == uid
@@ -39,6 +35,7 @@ service cloud.firestore {
       allow create: if activeUser()
         && request.resource.data.fromUid == request.auth.uid
         && request.resource.data.toUid is string
+        && request.resource.data.toUid != request.auth.uid
         && request.resource.data.status == 'pending';
       allow read: if activeUser() && (
         resource.data.fromUid == request.auth.uid
@@ -57,12 +54,19 @@ service cloud.firestore {
 
     match /clubs/{clubId} {
       allow read: if activeUser();
-      allow create: if activeUser() && request.resource.data.ownerUid == request.auth.uid;
+      allow create: if activeUser()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.memberUids is list
+        && request.resource.data.memberUids.size() == 1
+        && request.resource.data.memberUids.hasAny([request.auth.uid]);
+      // Club owners may edit only the club name; membership is changed separately.
       allow update: if admin()
         || (activeUser() && resource.data.ownerUid == request.auth.uid
-          && request.resource.data.ownerUid == resource.data.ownerUid)
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name']))
         || (activeUser() && request.resource.data.ownerUid == resource.data.ownerUid
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids'])
+          && request.resource.data.memberUids is list
           && request.resource.data.memberUids.hasAll(resource.data.memberUids)
           && request.resource.data.memberUids.size() == resource.data.memberUids.size() + 1
           && request.resource.data.memberUids.hasAny([request.auth.uid]));
@@ -74,6 +78,7 @@ service cloud.firestore {
       allow create, delete: if admin();
       allow update: if admin() || (activeUser()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantUids'])
+        && request.resource.data.participantUids is list
         && request.resource.data.participantUids.hasAll(resource.data.participantUids)
         && request.resource.data.participantUids.size() == resource.data.participantUids.size() + 1
         && request.resource.data.participantUids.hasAny([request.auth.uid]));
