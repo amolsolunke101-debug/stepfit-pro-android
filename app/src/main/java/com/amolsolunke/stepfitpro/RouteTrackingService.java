@@ -127,11 +127,29 @@ public class RouteTrackingService extends Service {
             callback = null;
         }
         long duration = startedAt > 0 ? Math.max(0, (System.currentTimeMillis() - startedAt) / 1000) : 0;
-        getSharedPreferences("StepFitData", MODE_PRIVATE).edit()
+        String joinedPoints = android.text.TextUtils.join(";", points);
+        android.content.SharedPreferences prefs = getSharedPreferences("StepFitData", MODE_PRIVATE);
+        prefs.edit()
                 .putFloat("last_route_km", (float)(meters / 1000.0))
                 .putLong("last_route_duration", duration)
-                .putString("last_route_points", android.text.TextUtils.join(";", points))
+                .putString("last_route_points", joinedPoints)
                 .putBoolean("route_tracking", false).apply();
+
+        // Keep the latest 20 completed routes locally on the device.
+        try {
+            org.json.JSONArray history = new org.json.JSONArray(prefs.getString("route_history", "[]"));
+            org.json.JSONObject route = new org.json.JSONObject();
+            route.put("savedAt", System.currentTimeMillis());
+            route.put("distanceKm", meters / 1000.0);
+            route.put("durationSeconds", duration);
+            route.put("points", joinedPoints);
+            org.json.JSONArray updated = new org.json.JSONArray();
+            updated.put(route);
+            for (int i = 0; i < history.length() && i < 19; i++) updated.put(history.getJSONObject(i));
+            prefs.edit().putString("route_history", updated.toString()).apply();
+        } catch (org.json.JSONException ignored) {
+            // Keep the most recent route even if an older history record is malformed.
+        }
         stopForeground(true);
         stopSelf();
     }
