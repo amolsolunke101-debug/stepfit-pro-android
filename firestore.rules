@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function admin() { return signedIn() && request.auth.token.admin == true; }
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || admin());
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && (!('blocked' in request.resource.data) || request.resource.data.blocked == resource.data.blocked);
+      allow update: if admin();
+      allow delete: if admin();
+      match /dailyStats/{day} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+      }
+    }
+    match /friendRequests/{requestId} {
+      allow create: if signedIn() && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.toUid is string && request.resource.data.status == 'pending';
+      allow read: if signedIn() && (resource.data.fromUid == request.auth.uid
+        || resource.data.toUid == request.auth.uid || admin());
+      allow update: if signedIn() && resource.data.toUid == request.auth.uid
+        && request.resource.data.fromUid == resource.data.fromUid
+        && request.resource.data.toUid == resource.data.toUid;
+      allow delete: if admin() || (signedIn() && resource.data.fromUid == request.auth.uid);
+    }
+    match /clubs/{clubId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if admin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
+      allow delete: if admin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
+    }
+    match /challenges/{challengeId} {
+      allow read: if signedIn();
+      allow create, delete: if admin();
+      allow update: if admin() || (signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantUids'])
+        && request.resource.data.participantUids.hasAll(resource.data.participantUids)
+        && request.resource.data.participantUids.hasAny([request.auth.uid]));
+    }
+    match /leaderboards/{boardId} {
+      allow read: if signedIn();
+      allow write: if admin();
+    }
+  }
+}
