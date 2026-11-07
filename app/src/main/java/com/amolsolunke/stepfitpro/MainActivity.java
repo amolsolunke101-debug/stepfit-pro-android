@@ -126,6 +126,8 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 29 &&
             checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.ACTIVITY_RECOGNITION}, 1001);
+        } else {
+            requestNotificationPermissionIfNeeded();
         }
 
         try {
@@ -264,6 +266,15 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
                 Toast.makeText(this, "Google sign-in cancelled or unavailable.", Toast.LENGTH_LONG).show();
             }
+        }
+    }
+
+    private void requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= 33 &&
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+                !prefs.getBoolean("notification_permission_asked", false)) {
+            prefs.edit().putBoolean("notification_permission_asked", true).apply();
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1002);
         }
     }
 
@@ -653,8 +664,14 @@ public class MainActivity extends Activity {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 startStepService();
                 showPage(page);
+                requestNotificationPermissionIfNeeded();
             } else {
                 Toast.makeText(this, t(36), Toast.LENGTH_LONG).show();
+            }
+        } else if (requestCode == 1002) {
+            // Step counting continues even if notification permission is declined.
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Step counter notifications enabled.", Toast.LENGTH_SHORT).show();
             }
         }
     }
