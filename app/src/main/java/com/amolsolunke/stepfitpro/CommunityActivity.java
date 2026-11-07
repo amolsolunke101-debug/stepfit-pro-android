@@ -109,12 +109,44 @@ public class CommunityActivity extends Activity {
             }).addOnFailureListener(e -> msg("Could not load challenges: " + e.getLocalizedMessage()));
     }
 
+
+    private void showAdminUsers() {
+        FirebaseFirestore.getInstance().collection("users").limit(100).get()
+            .addOnSuccessListener(snapshot -> {
+                if (snapshot.isEmpty()) { msg("No user profiles found."); return; }
+                java.util.List<com.google.firebase.firestore.DocumentSnapshot> docs = snapshot.getDocuments();
+                String[] labels = new String[docs.size()];
+                for (int i = 0; i < docs.size(); i++) {
+                    com.google.firebase.firestore.DocumentSnapshot doc = docs.get(i);
+                    String name = doc.getString("name");
+                    String email = doc.getString("email");
+                    boolean blocked = Boolean.TRUE.equals(doc.getBoolean("blocked"));
+                    labels[i] = (name == null || name.isEmpty() ? "Unnamed user" : name)
+                        + " • " + (email == null ? doc.getId() : email)
+                        + (blocked ? " • SUSPENDED" : "");
+                }
+                new AlertDialog.Builder(this).setTitle("Users (up to 100)")
+                    .setItems(labels, (dialog, which) -> {
+                        String uid = docs.get(which).getId();
+                        boolean blocked = Boolean.TRUE.equals(docs.get(which).getBoolean("blocked"));
+                        new AlertDialog.Builder(this).setTitle("Manage account")
+                            .setMessage(labels[which])
+                            .setPositiveButton(blocked ? "Unblock" : "Block", (d, w) ->
+                                StepFitCloud.setUserBlocked(uid, !blocked, this::result))
+                            .setNegativeButton("Cancel", null).show();
+                    }).setPositiveButton("Close", null).show();
+            }).addOnFailureListener(e -> msg("Could not load users: " + e.getLocalizedMessage()));
+    }
+
     private void openAdmin() {
         StepFitCloud.isAdmin((allowed, message) -> runOnUiThread(() -> {
             if (!allowed) { msg(message); return; }
             new AlertDialog.Builder(this).setTitle("Protected Admin Panel")
-              .setItems(new String[]{"Block user","Unblock user"}, (d, which) ->
-                field("Target user's UID", id -> StepFitCloud.setUserBlocked(id, which == 0, this::result)))
+              .setItems(new String[]{"Manage user list","Block user by UID","Unblock user by UID"}, (d, which) -> {
+                  if (which == 0) showAdminUsers();
+                  else field("Target user's UID", id ->
+                      StepFitCloud.setUserBlocked(id, which == 1, this::result));
+              })
               .setNegativeButton("Close", null).show();
         }));
     }
