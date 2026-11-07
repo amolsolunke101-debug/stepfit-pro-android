@@ -109,6 +109,27 @@ public final class StepFitCloud {
           .addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()));
     }
 
+
+    public static void createChallenge(String name, String description, long targetSteps, Result result) {
+        String id = uid();
+        if (id == null || name == null || name.trim().isEmpty() || targetSteps < 1) {
+            result.done(false, "Enter a challenge name and a positive step target."); return;
+        }
+        isAdmin((allowed, message) -> {
+            if (!allowed) { result.done(false, "Only an authorized admin can create challenges."); return; }
+            Map<String,Object> data = new HashMap<>();
+            data.put("name", name.trim());
+            data.put("description", description == null ? "" : description.trim());
+            data.put("targetSteps", targetSteps);
+            data.put("participantUids", new java.util.ArrayList<String>());
+            data.put("createdBy", id);
+            data.put("createdAt", FieldValue.serverTimestamp());
+            DB.collection("challenges").add(data)
+                .addOnSuccessListener(v -> result.done(true, "Challenge created."))
+                .addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()));
+        });
+    }
+
     public static void joinChallenge(String challengeId, Result result) {
         String id = uid();
         if (id == null || challengeId == null || challengeId.trim().isEmpty()) {
