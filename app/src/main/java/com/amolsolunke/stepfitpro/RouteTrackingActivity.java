@@ -99,7 +99,17 @@ public class RouteTrackingActivity extends Activity {
 
     @Override public void onRequestPermissionsResult(int r, String[] p, int[] g) {
         super.onRequestPermissionsResult(r,p,g);
-        if (r == 71 && g.length > 0 && g[0] == PackageManager.PERMISSION_GRANTED) start();
+        if (r == 71) {
+            boolean locationGranted = false;
+            for (int grant : g) {
+                if (grant == PackageManager.PERMISSION_GRANTED) {
+                    locationGranted = true;
+                    break;
+                }
+            }
+            if (locationGranted) start();
+            else Toast.makeText(this, "Location permission is required to track your route.", Toast.LENGTH_LONG).show();
+        }
     }
 
     @Override protected void onDestroy() {
