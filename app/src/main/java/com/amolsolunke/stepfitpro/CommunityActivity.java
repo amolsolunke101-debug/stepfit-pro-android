@@ -40,6 +40,7 @@ public class CommunityActivity extends Activity {
         box.addView(title);
         add("Send Friend Request", () -> field("Friend's User ID", id -> StepFitCloud.sendFriendRequest(id, this::result)));
         add("Incoming Friend Requests", this::showFriendRequests);
+        add("My Friends", this::showFriends);
         add("Browse Clubs", this::showClubs);
         add("Browse Challenges", this::showChallenges);
         add("Create a Club", () -> field("Club name", name -> StepFitCloud.createClub(name, this::result)));
@@ -80,6 +81,29 @@ public class CommunityActivity extends Activity {
                             }).setNegativeButton("Cancel", null).show();
                     }).setPositiveButton("Close", null).show();
             }).addOnFailureListener(e -> msg("Could not load requests: " + e.getLocalizedMessage()));
+    }
+
+    private void showFriends() {
+        String uid = StepFitCloud.uid();
+        if (uid == null) { msg("Sign in first."); return; }
+        FirebaseFirestore.getInstance().collection("friendRequests")
+            .whereEqualTo("status", "accepted").get()
+            .addOnSuccessListener(snapshot -> {
+                java.util.Set<String> friends = new java.util.LinkedHashSet<>();
+                for (com.google.firebase.firestore.DocumentSnapshot doc : snapshot.getDocuments()) {
+                    String from = doc.getString("fromUid");
+                    String to = doc.getString("toUid");
+                    if (uid.equals(from) && to != null) friends.add(to);
+                    else if (uid.equals(to) && from != null) friends.add(from);
+                }
+                if (friends.isEmpty()) { msg("No accepted friends yet."); return; }
+                String[] labels = friends.toArray(new String[0]);
+                new AlertDialog.Builder(this).setTitle("My Friends (" + labels.length + ")")
+                    .setItems(labels, (dialog, which) ->
+                        new AlertDialog.Builder(this).setTitle("Friend User ID")
+                            .setMessage(labels[which]).setPositiveButton("OK", null).show())
+                    .setPositiveButton("Close", null).show();
+            }).addOnFailureListener(e -> msg("Could not load friends: " + e.getLocalizedMessage()));
     }
 
     private void showClubs() {
