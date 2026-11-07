@@ -173,7 +173,8 @@ public class CommunityActivity extends Activity {
                     + "Participants: " + participants.size() + "\n"
                     + "Your status: " + (joined ? "Joined" : "Not joined") + "\n"
                     + "Your steps today: " + todaySteps + "\n"
-                    + "Today's progress against target: " + percent + "%";
+                    + "Today's progress against target: " + percent + "%\n\n"
+                    + "Note: This progress uses steps stored on this device. It is not a verified multi-user leaderboard.";
                 AlertDialog.Builder dialog = new AlertDialog.Builder(this)
                     .setTitle(name == null ? "Challenge" : name)
                     .setMessage(message)
