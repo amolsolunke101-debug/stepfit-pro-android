@@ -33,10 +33,13 @@ service cloud.firestore {
 
     match /friendRequests/{requestId} {
       allow create: if activeUser()
+        && request.resource.data.keys().hasOnly(['fromUid', 'toUid', 'status', 'createdAt'])
         && request.resource.data.fromUid == request.auth.uid
         && request.resource.data.toUid is string
         && request.resource.data.toUid != request.auth.uid
-        && request.resource.data.status == 'pending';
+        && request.resource.data.status == 'pending'
+        && exists(/databases/$(database)/documents/users/$(request.resource.data.toUid))
+        && get(/databases/$(database)/documents/users/$(request.resource.data.toUid)).data.blocked != true;
       allow read: if activeUser() && (
         resource.data.fromUid == request.auth.uid
         || resource.data.toUid == request.auth.uid
