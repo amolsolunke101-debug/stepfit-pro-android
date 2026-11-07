@@ -262,6 +262,12 @@ public class MainActivity extends Activity {
     }
 
     private void startStepService() {
+        // Wait for the runtime activity-recognition permission before
+        // starting the health foreground service.
+        if (Build.VERSION.SDK_INT >= 29 &&
+                checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
         Intent serviceIntent = new Intent(this, StepCounterService.class);
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -269,6 +275,8 @@ public class MainActivity extends Activity {
             } else {
                 startService(serviceIntent);
             }
+        } catch (SecurityException e) {
+            Toast.makeText(this, "Step counter permission is required to start counting.", Toast.LENGTH_LONG).show();
         } catch (Exception e) {
             Toast.makeText(this, "Step counter service could not start. Open the app again.", Toast.LENGTH_LONG).show();
         }
