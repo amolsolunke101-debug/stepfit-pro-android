@@ -237,7 +237,12 @@ public class MainActivity extends Activity {
             android.net.Uri uri = data.getData();
             try { getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (Exception ignored) {}
             prefs.edit().putString("profile_photo_uri", uri.toString()).apply();
-            Toast.makeText(this, "Profile photo saved on this device.", Toast.LENGTH_SHORT).show();
+            if (auth != null && auth.getCurrentUser() != null) {
+                StepFitCloud.uploadProfilePhoto(uri, (ok, message) -> runOnUiThread(() ->
+                    Toast.makeText(this, message, Toast.LENGTH_LONG).show()));
+            } else {
+                Toast.makeText(this, "Profile photo saved on this device. Sign in to sync it.", Toast.LENGTH_SHORT).show();
+            }
             if (content != null) showPage(4);
             return;
         }
@@ -466,6 +471,20 @@ public class MainActivity extends Activity {
         languageButton.setOnClickListener(v -> chooseLanguage()); content.addView(languageButton, lp(-1, 50));
         Button themeButton = new Button(this); themeButton.setText(t(12));
         themeButton.setOnClickListener(v -> chooseTheme()); content.addView(themeButton, lp(-1, 50));
+        Button gpsButton = new Button(this); gpsButton.setText("GPS Route Tracking");
+        gpsButton.setOnClickListener(v -> startActivity(new Intent(this, RouteTrackingActivity.class)));
+        content.addView(gpsButton, lp(-1, 50));
+        Button communityButton = new Button(this); communityButton.setText("Friends • Clubs • Challenges • Admin");
+        communityButton.setOnClickListener(v -> startActivity(new Intent(this, CommunityActivity.class)));
+        content.addView(communityButton, lp(-1, 50));
+        Button syncButton = new Button(this); syncButton.setText("Sync Profile and Activity");
+        syncButton.setOnClickListener(v -> {
+            StepFitCloud.syncProfile(prefs.getString("profile_name",""), prefs.getString("profile_age",""),
+                prefs.getString("profile_gender",""), (ok, message) -> runOnUiThread(() -> Toast.makeText(this,message,Toast.LENGTH_LONG).show()));
+            StepFitCloud.saveDailyStats(getSteps(), getSteps()*prefs.getFloat("stride",75f)/100000.0,
+                getSteps()*prefs.getFloat("weight",70f)*0.0004, (ok,message) -> runOnUiThread(() -> Toast.makeText(this,message,Toast.LENGTH_LONG).show()));
+        });
+        content.addView(syncButton, lp(-1, 50));
         if (auth != null && auth.getCurrentUser() != null) {
             TextView account = text("Signed in: " + auth.getCurrentUser().getEmail(), 13, Color.WHITE, false);
             content.addView(account, lp(-1, 44));
@@ -503,6 +522,11 @@ public class MainActivity extends Activity {
                 prefs.edit().putString("profile_name", name.getText().toString().trim())
                     .putString("profile_age", age.getText().toString().trim())
                     .putString("profile_gender", gender.getText().toString().trim()).apply();
+                if (auth != null && auth.getCurrentUser() != null) {
+                    StepFitCloud.syncProfile(name.getText().toString().trim(), age.getText().toString().trim(),
+                        gender.getText().toString().trim(), (ok, message) -> runOnUiThread(() ->
+                            Toast.makeText(this, message, Toast.LENGTH_LONG).show()));
+                }
                 buildShell(); showPage(4);
             }).setNeutralButton("Choose photo", (d, w) -> {
                 Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
