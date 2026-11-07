@@ -35,6 +35,7 @@ public class MainActivity extends Activity {
     private FirebaseAuth auth;
     private GoogleSignInClient googleSignInClient;
     private EditText emailInput, passwordInput;
+    private static final int PICK_PROFILE_PHOTO = 2001;
 
     private final BroadcastReceiver stepsReceiver = new BroadcastReceiver() {
         @Override
@@ -232,6 +233,14 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == PICK_PROFILE_PHOTO && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            android.net.Uri uri = data.getData();
+            try { getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (Exception ignored) {}
+            prefs.edit().putString("profile_photo_uri", uri.toString()).apply();
+            Toast.makeText(this, "Profile photo saved on this device.", Toast.LENGTH_SHORT).show();
+            if (content != null) showPage(4);
+            return;
+        }
         if (requestCode == 1002 && googleSignInClient != null) {
             try {
                 Task<com.google.android.gms.auth.api.signin.GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
@@ -323,7 +332,8 @@ public class MainActivity extends Activity {
 
     private void buildShell() {
         root = column(); root.setBackgroundColor(bg);
-        TextView title = text("👟 StepFit PRO", 28, accent, true);
+        String displayName = prefs.getString("profile_name", "");
+        TextView title = text("👟 StepFit PRO" + (displayName.isEmpty() ? "" : "  •  " + displayName), 24, accent, true);
         root.addView(title, lp(-1, 64));
         content = column();
         ScrollView scroll = new ScrollView(this); scroll.addView(content);
@@ -435,6 +445,14 @@ public class MainActivity extends Activity {
 
     private void showSettings() {
         content.addView(text(t(4), 24, accent, true));
+        Button profileButton = new Button(this); profileButton.setText("My Profile");
+        profileButton.setOnClickListener(v -> editProfile()); content.addView(profileButton, lp(-1, 50));
+        String profileName = prefs.getString("profile_name", "");
+        String profileAge = prefs.getString("profile_age", "");
+        String profileGender = prefs.getString("profile_gender", "");
+        content.addView(text("Profile: " + (profileName.isEmpty() ? "Not set" : profileName) +
+            (profileAge.isEmpty() ? "" : " • " + profileAge) +
+            (profileGender.isEmpty() ? "" : " • " + profileGender), 14, Color.WHITE, false), lp(-1, 42));
         Button goalButton = new Button(this); goalButton.setText(t(10));
         goalButton.setOnClickListener(v -> editNumber(t(35), "goal", 0));
         content.addView(goalButton, lp(-1, 50));
@@ -469,6 +487,28 @@ public class MainActivity extends Activity {
                 showPage(0);
             }).show());
         content.addView(resetButton, lp(-1, 50));
+    }
+
+    private void editProfile() {
+        LinearLayout form = column();
+        EditText name = new EditText(this); name.setSingleLine(true); name.setHint("Full name");
+        name.setText(prefs.getString("profile_name", "")); form.addView(name, lp(-1, 52));
+        EditText age = new EditText(this); age.setSingleLine(true); age.setInputType(2); age.setHint("Age (optional)");
+        age.setText(prefs.getString("profile_age", "")); form.addView(age, lp(-1, 52));
+        EditText gender = new EditText(this); gender.setSingleLine(true); gender.setHint("Gender (optional)");
+        gender.setText(prefs.getString("profile_gender", "")); form.addView(gender, lp(-1, 52));
+        new AlertDialog.Builder(this).setTitle("My Profile").setView(form)
+            .setNegativeButton(t(14), null)
+            .setPositiveButton(t(13), (d, w) -> {
+                prefs.edit().putString("profile_name", name.getText().toString().trim())
+                    .putString("profile_age", age.getText().toString().trim())
+                    .putString("profile_gender", gender.getText().toString().trim()).apply();
+                buildShell(); showPage(4);
+            }).setNeutralButton("Choose photo", (d, w) -> {
+                Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                pick.addCategory(Intent.CATEGORY_OPENABLE); pick.setType("image/*");
+                startActivityForResult(pick, PICK_PROFILE_PHOTO);
+            }).show();
     }
 
     private void editNumber(String title, String key, int value) {
