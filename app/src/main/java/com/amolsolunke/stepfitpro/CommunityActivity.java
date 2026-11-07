@@ -78,13 +78,16 @@ public class CommunityActivity extends Activity {
             .addOnSuccessListener(snapshot -> {
                 if (snapshot.isEmpty()) { msg("No clubs are available yet."); return; }
                 java.util.List<String> lines = new java.util.ArrayList<>();
+                java.util.List<String> ids = new java.util.ArrayList<>();
                 for (com.google.firebase.firestore.DocumentSnapshot doc : snapshot.getDocuments()) {
                     String name = doc.getString("name");
                     lines.add((name == null ? "Unnamed club" : name) + "  •  " + doc.getId());
+                    ids.add(doc.getId());
                 }
                 new AlertDialog.Builder(this).setTitle("Available Clubs")
-                    .setItems(lines.toArray(new String[0]), null)
-                    .setPositiveButton("Close", null).show();
+                    .setItems(lines.toArray(new String[0]), (dialog, which) ->
+                        StepFitCloud.joinClub(ids.get(which), this::result))
+                    .setNegativeButton("Close", null).show();
             }).addOnFailureListener(e -> msg("Could not load clubs: " + e.getLocalizedMessage()));
     }
 
