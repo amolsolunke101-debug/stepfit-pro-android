@@ -12,8 +12,9 @@
 const admin = require("firebase-admin");
 
 const uid = process.argv[2];
+const revoke = process.argv[3] === "--revoke";
 if (!uid) {
-  console.error("Usage: node scripts/set-admin-claim.js FIREBASE_AUTH_UID");
+  console.error("Usage: node scripts/set-admin-claim.js FIREBASE_AUTH_UID [--revoke]");
   process.exit(1);
 }
 if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
@@ -27,8 +28,11 @@ admin.initializeApp({ credential: admin.credential.applicationDefault() });
   try {
     const user = await admin.auth().getUser(uid);
     const existing = user.customClaims || {};
-    await admin.auth().setCustomUserClaims(uid, { ...existing, admin: true });
-    console.log("Admin claim assigned to:", uid);
+    const claims = { ...existing };
+    if (revoke) delete claims.admin;
+    else claims.admin = true;
+    await admin.auth().setCustomUserClaims(uid, claims);
+    console.log(revoke ? "Admin claim revoked from:" : "Admin claim assigned to:", uid);
     console.log("The user must sign out and sign in again (or refresh the ID token) for the claim to appear.");
   } catch (error) {
     console.error("Could not assign admin claim:", error.message);
