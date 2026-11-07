@@ -20,8 +20,9 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if activeUser() && (request.auth.uid == uid || admin());
-      allow create: if activeUser() && request.auth.uid == uid
-        && !('blocked' in request.resource.data);
+      allow create: if admin()
+        || (activeUser() && request.auth.uid == uid
+          && !('blocked' in request.resource.data));
       allow update: if activeUser() && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys().hasNone(['blocked']);
       allow update, delete: if admin();
