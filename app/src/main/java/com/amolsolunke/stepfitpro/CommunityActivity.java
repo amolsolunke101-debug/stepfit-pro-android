@@ -218,14 +218,17 @@ public class CommunityActivity extends Activity {
     private void showChallengeLeaderboard(String challengeId) {
         String day = todayKey();
         FirebaseFirestore.getInstance().collection("challenges").document(challengeId)
-            .collection("dailyProgress").whereEqualTo("day", day)
-            .orderBy("steps", com.google.firebase.firestore.Query.Direction.DESCENDING)
-            .limit(20).get()
+            .collection("dailyProgress").whereEqualTo("day", day).limit(100).get()
             .addOnSuccessListener(snapshot -> {
                 if (snapshot.isEmpty()) { msg("No submitted scores for today yet."); return; }
+                java.util.List<com.google.firebase.firestore.DocumentSnapshot> docs =
+                    new java.util.ArrayList<>(snapshot.getDocuments());
+                java.util.Collections.sort(docs, (a, b) ->
+                    Long.compare(b.getLong("steps") == null ? 0L : b.getLong("steps"),
+                                 a.getLong("steps") == null ? 0L : a.getLong("steps")));
                 StringBuilder board = new StringBuilder();
                 int rank = 1;
-                for (com.google.firebase.firestore.DocumentSnapshot doc : snapshot.getDocuments()) {
+                for (com.google.firebase.firestore.DocumentSnapshot doc : docs.subList(0, Math.min(20, docs.size()))) {
                     String uid = doc.getString("uid");
                     Long steps = doc.getLong("steps");
                     String shortId = uid == null ? "unknown" :
