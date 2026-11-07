@@ -6,6 +6,8 @@ import android.content.*;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.graphics.drawable.GradientDrawable;
 import android.os.*;
 import android.view.*;
@@ -441,6 +443,54 @@ public class MainActivity extends Activity {
             day.setBackground(shape(card, 12)); content.addView(day, lp(-1, 44));
         }
         addCard(t(28), String.valueOf(total / 7)); addCard(t(29), String.valueOf(highest));
+
+        content.addView(text(t(3) + " • " + t(15), 20, accent, true));
+        StepBarChart chart = new StepBarChart(this);
+        LinearLayout.LayoutParams chartParams = lp(-1, 190);
+        chartParams.setMargins(0, dp(8), 0, dp(12));
+        content.addView(chart, chartParams);
+        TextView note = text("Daily steps • Last 7 days", 13, Color.LTGRAY, false);
+        content.addView(note, lp(-1, 34));
+    }
+
+    private class StepBarChart extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final long[] values = new long[7];
+        private final String[] days = new String[7];
+
+        StepBarChart(Context context) {
+            super(context);
+            for (int i = 0; i < 7; i++) {
+                values[6 - i] = i == 0 ? getSteps() : Math.max(0L, prefs.getLong("history_" + dateMinus(i), 0L));
+                Calendar cal = Calendar.getInstance();
+                cal.add(Calendar.DAY_OF_YEAR, -(6 - i));
+                days[i] = new SimpleDateFormat("EEE", Locale.getDefault()).format(cal.getTime());
+            }
+            setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+        }
+
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            float width = getWidth(), height = getHeight();
+            float left = dp(12), right = width - dp(12), top = dp(12), bottom = height - dp(30);
+            paint.setColor(Color.argb(55, 255, 255, 255));
+            paint.setStrokeWidth(dp(1));
+            canvas.drawLine(left, bottom, right, bottom, paint);
+            long max = 1;
+            for (long value : values) max = Math.max(max, value);
+            float slot = (right - left) / 7f;
+            float barWidth = slot * .55f;
+            for (int i = 0; i < 7; i++) {
+                float barHeight = (bottom - top) * (values[i] / (float) max);
+                float x = left + i * slot + (slot - barWidth) / 2f;
+                paint.setColor(accent);
+                canvas.drawRoundRect(x, bottom - barHeight, x + barWidth, bottom, dp(5), dp(5), paint);
+                paint.setColor(Color.WHITE);
+                paint.setTextSize(dp(10));
+                paint.setTextAlign(Paint.Align.CENTER);
+                canvas.drawText(days[i], x + barWidth / 2f, height - dp(8), paint);
+            }
+        }
     }
 
     private String dateMinus(int days) {
