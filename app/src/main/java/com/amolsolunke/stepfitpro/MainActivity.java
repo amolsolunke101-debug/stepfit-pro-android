@@ -46,17 +46,11 @@ public class MainActivity extends Activity {
         }
     };
 
-    private final String[] langCodes = {
-        "en","mr","hi","bn","te","ta","kn","ml","gu","pa","or",
-        "as","ur","sa","kok","mai","ne","doi","ks","mni","sat","br"
-    };
+    // Only languages with complete UI translations are selectable.
+    // Additional Indian languages will be enabled after their translations are complete.
+    private final String[] langCodes = {"en", "mr"};
 
-    private final String[] langNames = {
-        "English","मराठी","हिन्दी","বাংলা","తెలుగు","தமிழ்","ಕನ್ನಡ",
-        "മലയാളം","ગુજરાતી","ਪੰਜਾਬੀ","ଓଡ଼ିଆ","অসমীয়া","اردو",
-        "संस्कृतम्","कोंकणी","मैथिली","नेपाली","डोगरी","کٲشُر",
-        "মৈতৈলোন্","ᱥᱟᱱᱛᱟᱲᱤ","बड़ो"
-    };
+    private final String[] langNames = {"English", "मराठी"};
 
     private final String[][] labels = {
       {
@@ -104,7 +98,6 @@ public class MainActivity extends Activity {
 
     private String t(int i) {
         if ("mr".equals(language)) return labels[1][i];
-        if ("es".equals(language)) return labels[2][i];
         return labels[0][i];
     }
 
