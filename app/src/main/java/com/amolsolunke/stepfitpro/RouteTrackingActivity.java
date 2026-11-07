@@ -159,6 +159,20 @@ public class RouteTrackingActivity extends Activity {
         handler.postDelayed(this::refresh, 500);
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 71) {
+            boolean granted = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                    || ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+            if (granted) {
+                start();
+            } else {
+                Toast.makeText(this, "Location permission is needed for GPS route tracking.", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
     @Override public void onCreate(Bundle b) {
         super.onCreate(b);
         LinearLayout root = new LinearLayout(this);
