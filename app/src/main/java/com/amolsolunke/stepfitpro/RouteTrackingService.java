@@ -36,7 +36,7 @@ public class RouteTrackingService extends Service {
     }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
-        String action = intent == null ? ACTION_START : intent.getAction();
+        String action = intent == null ? null : intent.getAction();
         if (ACTION_STOP.equals(action)) {
             saveAndStop();
             return START_NOT_STICKY;
@@ -47,8 +47,22 @@ public class RouteTrackingService extends Service {
             return START_NOT_STICKY;
         }
         startForeground(NOTIFICATION_ID, notification("GPS route is being recorded"));
-        if (callback == null) beginUpdates();
+        if (callback == null) {
+            if (action == null && getSharedPreferences("StepFitData", MODE_PRIVATE).getBoolean("route_tracking", false)) resumeUpdates();
+            else beginUpdates();
+        }
         return START_STICKY;
+    }
+
+    private void resumeUpdates() {
+        android.content.SharedPreferences prefs = getSharedPreferences("StepFitData", MODE_PRIVATE);
+        meters = Math.max(0, prefs.getFloat("route_live_km", 0f) * 1000.0);
+        startedAt = prefs.getLong("route_started_at", System.currentTimeMillis());
+        points.clear();
+        String saved = prefs.getString("route_live_points", "");
+        if (saved != null && !saved.isEmpty()) for (String point : saved.split(";")) if (!point.isEmpty() && points.size() < 12000) points.add(point);
+        previous = null;
+        requestUpdates();
     }
 
     private void beginUpdates() {
@@ -58,7 +72,12 @@ public class RouteTrackingService extends Service {
         startedAt = System.currentTimeMillis();
         getSharedPreferences("StepFitData", MODE_PRIVATE).edit()
                 .putBoolean("route_tracking", true).putLong("route_started_at", startedAt)
-                .putFloat("route_live_km", 0f).putLong("route_live_seconds", 0).apply();
+                .putFloat("route_live_km", 0f).putLong("route_live_seconds", 0)
+                .putString("route_live_points", "").apply();
+        requestUpdates();
+    }
+
+    private void requestUpdates() {
         LocationRequest request = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000)
                 .setMinUpdateDistanceMeters(2).build();
         callback = new LocationCallback() {
