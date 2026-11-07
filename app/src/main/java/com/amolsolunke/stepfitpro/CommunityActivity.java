@@ -24,6 +24,15 @@ public class CommunityActivity extends Activity {
     private void result(boolean ok, String text) { msg(text); }
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        if (FirebaseAuth.getInstance().getCurrentUser() == null) {
+            new AlertDialog.Builder(this)
+                .setTitle("Sign in required")
+                .setMessage("Community features need a free account and internet connection. Your offline step counter remains available without signing in.")
+                .setPositiveButton("OK", (dialog, which) -> finish())
+                .setOnCancelListener(dialog -> finish())
+                .show();
+            return;
+        }
         box = new LinearLayout(this); box.setOrientation(1); box.setPadding(24,24,24,24);
         box.setBackgroundColor(Color.rgb(10,18,38));
         TextView title = new TextView(this); title.setText("StepFit PRO • Community");
