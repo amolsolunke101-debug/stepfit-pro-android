@@ -49,7 +49,8 @@ service cloud.firestore {
         && resource.data.toUid == request.auth.uid
         && request.resource.data.fromUid == resource.data.fromUid
         && request.resource.data.toUid == resource.data.toUid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status in ['accepted', 'rejected'];
       allow delete: if admin()
         || (activeUser() && resource.data.fromUid == request.auth.uid);
     }
