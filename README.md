@@ -31,11 +31,13 @@ Admin access is controlled by a Firebase Authentication **custom claim** named `
 1. In Firebase Console, open Authentication and identify the intended administrator account.
 2. Copy that account's Firebase Authentication UID.
 3. In Google Cloud Console, create a service-account key with only the permissions needed to administer Firebase Authentication. Store the JSON file outside this repository in a protected location.
-4. On a trusted computer with Node.js installed, install the Admin SDK in a separate working directory (or otherwise ensure `firebase-admin` is available). Do not commit credentials.
-5. From the repository root, run:
+4. On a trusted computer with Node.js installed, open a terminal in the repository root and install the Admin SDK locally without saving dependency files:
 
 ```sh
-npm install --no-save firebase-admin
+npm install --no-save --no-package-lock firebase-admin
+```
+
+5. From the same repository root, run:
 GOOGLE_APPLICATION_CREDENTIALS="/secure/path/service-account.json" node scripts/set-admin-claim.js FIREBASE_AUTH_UID
 ```
 
