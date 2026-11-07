@@ -12,7 +12,20 @@
           "package_name": "com.amolsolunke.stepfitpro"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "508780773891-n3gaoo96s5oi7he41bp71rrc6v3l0gnv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.amolsolunke.stepfitpro",
+            "certificate_hash": "2117fb197847b3447106f50565bcc69afd0625f4"
+          }
+        },
+        {
+          "client_id": "508780773891-ojbmuj05p126pdbscdimmba4qh2qv10b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAFscRXby_dd3QzVoSDKPtFgI_rvimZOQk"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "508780773891-ojbmuj05p126pdbscdimmba4qh2qv10b.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
