@@ -12,6 +12,14 @@ import android.view.*;
 import android.widget.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.tasks.Task;
 
 public class MainActivity extends Activity {
     private SharedPreferences prefs;
@@ -24,6 +32,9 @@ public class MainActivity extends Activity {
     private int bg = Color.rgb(10, 18, 38);
     private int card = Color.rgb(27, 42, 68);
     private boolean receiverRegistered = false;
+    private FirebaseAuth auth;
+    private GoogleSignInClient googleSignInClient;
+    private EditText emailInput, passwordInput;
 
     private final BroadcastReceiver stepsReceiver = new BroadcastReceiver() {
         @Override
@@ -111,15 +122,120 @@ public class MainActivity extends Activity {
         language = prefs.getString("language", "en");
         theme = prefs.getInt("theme", 0);
         applyTheme();
+        auth = FirebaseAuth.getInstance();
+        try {
+            GoogleSignInOptions options = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id))
+                .requestEmail()
+                .build();
+            googleSignInClient = GoogleSignIn.getClient(this, options);
+        } catch (Exception ignored) {
+            googleSignInClient = null;
+        }
 
+        if (auth.getCurrentUser() == null) {
+            showAuthScreen();
+        } else {
+            openMainApp();
+        }
+    }
+
+    private void openMainApp() {
         if (Build.VERSION.SDK_INT >= 29 &&
             checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.ACTIVITY_RECOGNITION}, 1001);
         }
-
         buildShell();
         showPage(0);
         startStepService();
+    }
+
+    private void showAuthScreen() {
+        LinearLayout screen = column();
+        screen.setGravity(Gravity.CENTER_HORIZONTAL);
+        screen.setBackgroundColor(bg);
+        TextView heading = text("👟 StepFit PRO", 30, accent, true);
+        screen.addView(heading, lp(-1, 76));
+        screen.addView(text("Sign in to sync your profile", 16, Color.WHITE, false), lp(-1, 42));
+
+        emailInput = new EditText(this);
+        emailInput.setSingleLine(true);
+        emailInput.setHint("Email address");
+        emailInput.setInputType(33);
+        emailInput.setTextColor(Color.WHITE);
+        emailInput.setHintTextColor(Color.LTGRAY);
+        screen.addView(emailInput, lp(-1, 54));
+
+        passwordInput = new EditText(this);
+        passwordInput.setSingleLine(true);
+        passwordInput.setHint("Password (6 or more characters)");
+        passwordInput.setInputType(129);
+        passwordInput.setTextColor(Color.WHITE);
+        passwordInput.setHintTextColor(Color.LTGRAY);
+        screen.addView(passwordInput, lp(-1, 54));
+
+        Button signIn = new Button(this);
+        signIn.setText("Sign in with email");
+        signIn.setOnClickListener(v -> emailSignIn(false));
+        screen.addView(signIn, lp(-1, 52));
+
+        Button create = new Button(this);
+        create.setText("Create free account");
+        create.setOnClickListener(v -> emailSignIn(true));
+        screen.addView(create, lp(-1, 52));
+
+        Button google = new Button(this);
+        google.setText("Continue with Google");
+        google.setOnClickListener(v -> {
+            if (googleSignInClient == null) {
+                Toast.makeText(this, "Google sign-in is not configured yet.", Toast.LENGTH_LONG).show();
+            } else {
+                startActivityForResult(googleSignInClient.getSignInIntent(), 1002);
+            }
+        });
+        screen.addView(google, lp(-1, 52));
+        screen.addView(text("Your step counter data stays on this device when offline.", 13, Color.LTGRAY, false), lp(-1, 56));
+        setContentView(screen);
+        root = screen;
+        content = null;
+    }
+
+    private void emailSignIn(boolean createAccount) {
+        String email = emailInput.getText().toString().trim();
+        String password = passwordInput.getText().toString();
+        if (email.isEmpty() || password.length() < 6) {
+            Toast.makeText(this, "Enter a valid email and password of at least 6 characters.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        Task<?> task = createAccount
+            ? auth.createUserWithEmailAndPassword(email, password)
+            : auth.signInWithEmailAndPassword(email, password);
+        task.addOnCompleteListener(this, result -> {
+            if (result.isSuccessful()) {
+                openMainApp();
+            } else {
+                String message = result.getException() == null ? "Sign-in failed." : result.getException().getLocalizedMessage();
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 1002 && googleSignInClient != null) {
+            try {
+                Task<com.google.android.gms.auth.api.signin.GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
+                com.google.android.gms.auth.api.signin.GoogleSignInAccount account = task.getResult(ApiException.class);
+                AuthCredential credential = GoogleAuthProvider.getCredential(account.getIdToken(), null);
+                auth.signInWithCredential(credential).addOnCompleteListener(this, result -> {
+                    if (result.isSuccessful()) openMainApp();
+                    else Toast.makeText(this, "Google sign-in failed. Please try email sign-in.", Toast.LENGTH_LONG).show();
+                });
+            } catch (Exception e) {
+                Toast.makeText(this, "Google sign-in cancelled or unavailable.", Toast.LENGTH_LONG).show();
+            }
+        }
     }
 
     private void startStepService() {
@@ -323,6 +439,17 @@ public class MainActivity extends Activity {
         languageButton.setOnClickListener(v -> chooseLanguage()); content.addView(languageButton, lp(-1, 50));
         Button themeButton = new Button(this); themeButton.setText(t(12));
         themeButton.setOnClickListener(v -> chooseTheme()); content.addView(themeButton, lp(-1, 50));
+        if (auth != null && auth.getCurrentUser() != null) {
+            TextView account = text("Signed in: " + auth.getCurrentUser().getEmail(), 13, Color.WHITE, false);
+            content.addView(account, lp(-1, 44));
+            Button signOut = new Button(this); signOut.setText("Sign out");
+            signOut.setOnClickListener(v -> {
+                auth.signOut();
+                if (googleSignInClient != null) googleSignInClient.signOut();
+                showAuthScreen();
+            });
+            content.addView(signOut, lp(-1, 50));
+        }
         Button resetButton = new Button(this); resetButton.setText(t(19));
         resetButton.setOnClickListener(v -> new AlertDialog.Builder(this)
             .setTitle(t(19)).setMessage("Reset today's step count?")
