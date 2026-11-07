@@ -86,15 +86,25 @@ public class CommunityActivity extends Activity {
     private void showFriends() {
         String uid = StepFitCloud.uid();
         if (uid == null) { msg("Sign in first."); return; }
-        FirebaseFirestore.getInstance().collection("friendRequests")
-            .whereEqualTo("status", "accepted").get()
-            .addOnSuccessListener(snapshot -> {
+        com.google.firebase.firestore.CollectionReference requests =
+            FirebaseFirestore.getInstance().collection("friendRequests");
+        com.google.android.gms.tasks.Task<com.google.firebase.firestore.QuerySnapshot> sent =
+            requests.whereEqualTo("fromUid", uid).whereEqualTo("status", "accepted").get();
+        com.google.android.gms.tasks.Task<com.google.firebase.firestore.QuerySnapshot> received =
+            requests.whereEqualTo("toUid", uid).whereEqualTo("status", "accepted").get();
+
+        com.google.android.gms.tasks.Tasks.whenAllSuccess(sent, received)
+            .addOnSuccessListener(results -> {
                 java.util.Set<String> friends = new java.util.LinkedHashSet<>();
-                for (com.google.firebase.firestore.DocumentSnapshot doc : snapshot.getDocuments()) {
-                    String from = doc.getString("fromUid");
-                    String to = doc.getString("toUid");
-                    if (uid.equals(from) && to != null) friends.add(to);
-                    else if (uid.equals(to) && from != null) friends.add(from);
+                for (Object item : results) {
+                    com.google.firebase.firestore.QuerySnapshot snapshot =
+                        (com.google.firebase.firestore.QuerySnapshot)item;
+                    for (com.google.firebase.firestore.DocumentSnapshot doc : snapshot.getDocuments()) {
+                        String from = doc.getString("fromUid");
+                        String to = doc.getString("toUid");
+                        if (uid.equals(from) && to != null) friends.add(to);
+                        else if (uid.equals(to) && from != null) friends.add(from);
+                    }
                 }
                 if (friends.isEmpty()) { msg("No accepted friends yet."); return; }
                 String[] labels = friends.toArray(new String[0]);
