@@ -60,7 +60,12 @@ service cloud.firestore {
       allow create: if activeUser() && request.resource.data.ownerUid == request.auth.uid;
       allow update: if admin()
         || (activeUser() && resource.data.ownerUid == request.auth.uid
-          && request.resource.data.ownerUid == resource.data.ownerUid);
+          && request.resource.data.ownerUid == resource.data.ownerUid)
+        || (activeUser() && request.resource.data.ownerUid == resource.data.ownerUid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids'])
+          && request.resource.data.memberUids.hasAll(resource.data.memberUids)
+          && request.resource.data.memberUids.size() == resource.data.memberUids.size() + 1
+          && request.resource.data.memberUids.hasAny([request.auth.uid]));
       allow delete: if admin() || (activeUser() && resource.data.ownerUid == request.auth.uid);
     }
 
@@ -70,6 +75,7 @@ service cloud.firestore {
       allow update: if admin() || (activeUser()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantUids'])
         && request.resource.data.participantUids.hasAll(resource.data.participantUids)
+        && request.resource.data.participantUids.size() == resource.data.participantUids.size() + 1
         && request.resource.data.participantUids.hasAny([request.auth.uid]));
     }
 
