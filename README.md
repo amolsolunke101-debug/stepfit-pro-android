@@ -38,6 +38,8 @@ npm install --no-save --no-package-lock firebase-admin
 ```
 
 5. From the same repository root, run:
+
+```sh
 GOOGLE_APPLICATION_CREDENTIALS="/secure/path/service-account.json" node scripts/set-admin-claim.js FIREBASE_AUTH_UID
 ```
 
