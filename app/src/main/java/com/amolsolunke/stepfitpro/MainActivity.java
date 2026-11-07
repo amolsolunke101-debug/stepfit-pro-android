@@ -120,9 +120,8 @@ public class MainActivity extends Activity {
         applyTheme();
         auth = FirebaseAuth.getInstance();
 
-        // Keep the local step counter independent of cloud login.
-        // It can count offline, even before a user signs in.
-        startStepService();
+        // Request activity recognition once, before starting the health foreground service.
+        // Step counting remains independent of cloud login.
         if (Build.VERSION.SDK_INT >= 29 &&
             checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.ACTIVITY_RECOGNITION}, 1001);
@@ -148,10 +147,6 @@ public class MainActivity extends Activity {
     }
 
     private void openMainApp() {
-        if (Build.VERSION.SDK_INT >= 29 &&
-            checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.ACTIVITY_RECOGNITION}, 1001);
-        }
         buildShell();
         showPage(0);
         startStepService();
