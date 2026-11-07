@@ -234,10 +234,10 @@ public class CommunityActivity extends Activity {
                     String shortId = uid == null ? "unknown" :
                         (uid.length() > 10 ? uid.substring(0, 10) + "…" : uid);
                     board.append(rank++).append(". ").append(shortId)
-                        .append(" — ").append(steps == null ? 0 : steps).append(" steps\\n");
+                        .append(" — ").append(steps == null ? 0 : steps).append(" steps\n");
                 }
                 new AlertDialog.Builder(this).setTitle("Today's leaderboard")
-                    .setMessage(board.toString() + "\\nScores are self-reported from devices and are not verified.")
+                    .setMessage(board.toString() + "\nScores are self-reported from devices and are not verified.")
                     .setPositiveButton("Close", null).show();
             })
             .addOnFailureListener(e -> msg("Could not load leaderboard: " + e.getLocalizedMessage()));
