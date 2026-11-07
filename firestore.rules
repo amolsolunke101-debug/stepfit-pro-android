@@ -24,7 +24,9 @@ service cloud.firestore {
         || (activeUser() && request.auth.uid == uid
           && !('blocked' in request.resource.data));
       allow update: if activeUser() && request.auth.uid == uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasNone(['blocked']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+          ['email', 'name', 'age', 'gender', 'updatedAt', 'photoUrl']
+        );
       allow update, delete: if admin();
 
       match /dailyStats/{day} {
@@ -47,6 +49,7 @@ service cloud.firestore {
         || admin()
       );
       allow update: if activeUser()
+        && resource.data.status == 'pending'
         && resource.data.toUid == request.auth.uid
         && request.resource.data.fromUid == resource.data.fromUid
         && request.resource.data.toUid == resource.data.toUid
