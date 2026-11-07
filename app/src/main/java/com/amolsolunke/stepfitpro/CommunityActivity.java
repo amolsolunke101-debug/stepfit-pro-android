@@ -137,12 +137,48 @@ public class CommunityActivity extends Activity {
                 }
                 new AlertDialog.Builder(this).setTitle("Challenges")
                     .setItems(lines.toArray(new String[0]), (dialog, which) ->
-                        StepFitCloud.joinChallenge(ids.get(which), this::result))
+                        showChallengeDetails(ids.get(which)))
                     .setNegativeButton("Close", null).show();
             }).addOnFailureListener(e -> msg("Could not load challenges: " + e.getLocalizedMessage()));
     }
 
 
+
+    private void showChallengeDetails(String challengeId) {
+        FirebaseFirestore.getInstance().collection("challenges").document(challengeId)
+            .get().addOnSuccessListener(doc -> {
+                if (!doc.exists()) { msg("This challenge is no longer available."); return; }
+                String name = doc.getString("name");
+                String description = doc.getString("description");
+                Long target = doc.getLong("targetSteps");
+                java.util.List<String> participants = (java.util.List<String>) doc.get("participantUids");
+                if (participants == null) participants = new java.util.ArrayList<>();
+                String uid = StepFitCloud.uid();
+                boolean joined = uid != null && participants.contains(uid);
+                long goal = target == null ? 0L : Math.max(0L, target);
+                long todaySteps = getLocalTodaySteps();
+                int percent = goal <= 0 ? 0 : (int)Math.min(100L, todaySteps * 100L / goal);
+                String message = (description == null || description.trim().isEmpty() ? "" : description + "\n\n")
+                    + "Target: " + goal + " steps\n"
+                    + "Participants: " + participants.size() + "\n"
+                    + "Your status: " + (joined ? "Joined" : "Not joined") + "\n"
+                    + "Your steps today: " + todaySteps + "\n"
+                    + "Today's progress against target: " + percent + "%";
+                AlertDialog.Builder dialog = new AlertDialog.Builder(this)
+                    .setTitle(name == null ? "Challenge" : name)
+                    .setMessage(message)
+                    .setPositiveButton(joined ? "Joined" : "Join challenge", (d, w) -> {
+                        if (!joined) StepFitCloud.joinChallenge(challengeId, this::result);
+                    })
+                    .setNegativeButton("Close", null);
+                dialog.show();
+            }).addOnFailureListener(e -> msg("Could not load challenge: " + e.getLocalizedMessage()));
+    }
+
+    private long getLocalTodaySteps() {
+        Object value = getSharedPreferences("StepFitData", MODE_PRIVATE).getAll().get("today_steps");
+        return value instanceof Number ? Math.max(0L, ((Number)value).longValue()) : 0L;
+    }
 
     private void createChallengeDialog() {
         LinearLayout form = new LinearLayout(this);
