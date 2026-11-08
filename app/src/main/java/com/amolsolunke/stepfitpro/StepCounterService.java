@@ -27,6 +27,7 @@ public class StepCounterService extends Service implements SensorEventListener {
 
     private SensorManager sensorManager;
     private Sensor stepSensor;
+    private Sensor stepDetectorSensor;
     private SharedPreferences prefs;
     private long lastNotificationSteps = -1;
 
@@ -45,15 +46,21 @@ public class StepCounterService extends Service implements SensorEventListener {
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         if (sensorManager != null) {
             stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
+            // Use the detector only when the cumulative counter is unavailable.
+            // This prevents counting the same physical steps from two sensors.
+            if (stepSensor == null) {
+                stepDetectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
+            }
         }
 
         boolean permissionGranted = Build.VERSION.SDK_INT < 29 ||
                 checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED;
-        boolean available = stepSensor != null && permissionGranted;
+        Sensor selectedSensor = stepSensor != null ? stepSensor : stepDetectorSensor;
+        boolean available = selectedSensor != null && permissionGranted;
         prefs.edit().putBoolean("sensor_available", available).apply();
 
         if (available) {
-            boolean registered = sensorManager.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_NORMAL);
+            boolean registered = sensorManager.registerListener(this, selectedSensor, SensorManager.SENSOR_DELAY_NORMAL);
             prefs.edit().putBoolean("sensor_registered", registered).apply();
         } else {
             prefs.edit().putBoolean("sensor_registered", false).apply();
@@ -130,8 +137,35 @@ public class StepCounterService extends Service implements SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        if (event == null || event.sensor == null ||
-                event.sensor.getType() != Sensor.TYPE_STEP_COUNTER ||
+        if (event == null || event.sensor == null) return;
+
+        // Fallback for devices without TYPE_STEP_COUNTER. TYPE_STEP_DETECTOR
+        // emits one event per detected step, so increment the local daily total.
+        if (event.sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
+            if (stepSensor != null) return; // Never mix counter and detector totals.
+            String today = getToday();
+            String savedDate = prefs.getString("date", "");
+            long todaySteps = Math.max(0L, getStoredLong("today_steps", 0L));
+            if (!today.equals(savedDate)) {
+                saveDayIfNeeded(today, savedDate, todaySteps);
+                todaySteps = 0L;
+            }
+            if (todaySteps < Long.MAX_VALUE) todaySteps++;
+            prefs.edit().putLong("today_steps", todaySteps)
+                    .putString("date", today)
+                    .putBoolean("sensor_available", true)
+                    .putBoolean("sensor_registered", true)
+                    .apply();
+            broadcastUpdate();
+            if (lastNotificationSteps < 0 || todaySteps - lastNotificationSteps >= 5) {
+                NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                if (manager != null) manager.notify(NOTIFICATION_ID, buildNotification(todaySteps));
+                lastNotificationSteps = todaySteps;
+            }
+            return;
+        }
+
+        if (event.sensor.getType() != Sensor.TYPE_STEP_COUNTER ||
                 event.values == null || event.values.length == 0) return;
 
         long rawSteps = Math.max(0L, (long) event.values[0]);
@@ -183,15 +217,20 @@ public class StepCounterService extends Service implements SensorEventListener {
     public int onStartCommand(Intent intent, int flags, int startId) {
         // Re-register after a sticky service restart if needed.
         if (sensorManager == null) sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        if (stepSensor == null && sensorManager != null) {
+        if (sensorManager != null && stepSensor == null && stepDetectorSensor == null) {
             stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
+            if (stepSensor == null) stepDetectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
         }
         boolean permissionGranted = Build.VERSION.SDK_INT < 29 ||
                 checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED;
-        if (sensorManager != null && stepSensor != null && permissionGranted) {
+        Sensor selectedSensor = stepSensor != null ? stepSensor : stepDetectorSensor;
+        if (sensorManager != null && selectedSensor != null && permissionGranted) {
             sensorManager.unregisterListener(this);
-            boolean registered = sensorManager.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_NORMAL);
+            boolean registered = sensorManager.registerListener(this, selectedSensor, SensorManager.SENSOR_DELAY_NORMAL);
             prefs.edit().putBoolean("sensor_available", true).putBoolean("sensor_registered", registered).apply();
+        } else if (prefs != null) {
+            prefs.edit().putBoolean("sensor_available", selectedSensor != null)
+                    .putBoolean("sensor_registered", false).apply();
         }
         return START_STICKY;
     }
