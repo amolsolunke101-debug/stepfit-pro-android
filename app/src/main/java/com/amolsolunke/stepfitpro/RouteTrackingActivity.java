@@ -133,11 +133,24 @@ public class RouteTrackingActivity extends Activity {
             Toast.makeText(this, "At least two valid GPS points are needed for GPX export.", Toast.LENGTH_LONG).show();
             return;
         }
-        Intent share = new Intent(Intent.ACTION_SEND);
-        share.setType("application/gpx+xml");
-        share.putExtra(Intent.EXTRA_SUBJECT, "StepFit PRO GPS route");
-        share.putExtra(Intent.EXTRA_TEXT, gpx.toString());
-        startActivity(Intent.createChooser(share, "Share GPX route"));
+        try {
+            java.io.File exportDir = new java.io.File(getCacheDir(), "shared_routes");
+            if (!exportDir.exists() && !exportDir.mkdirs()) throw new java.io.IOException("Could not create export folder");
+            java.io.File exportFile = new java.io.File(exportDir, "stepfit-route-" + System.currentTimeMillis() + ".gpx");
+            try (java.io.FileOutputStream output = new java.io.FileOutputStream(exportFile)) {
+                output.write(gpx.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            }
+            android.net.Uri uri = androidx.core.content.FileProvider.getUriForFile(
+                    this, getPackageName() + ".fileprovider", exportFile);
+            Intent share = new Intent(Intent.ACTION_SEND);
+            share.setType("application/gpx+xml");
+            share.putExtra(Intent.EXTRA_STREAM, uri);
+            share.setClipData(android.content.ClipData.newUri(getContentResolver(), "StepFit PRO GPX route", uri));
+            share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(share, "Share GPX route"));
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not create GPX file for sharing.", Toast.LENGTH_LONG).show();
+        }
     }
 
     private int dp(float value) {
