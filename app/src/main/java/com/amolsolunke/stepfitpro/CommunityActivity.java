@@ -174,19 +174,18 @@ public class CommunityActivity extends Activity {
                     + "Your status: " + (joined ? "Joined" : "Not joined") + "\n"
                     + "Your steps today: " + todaySteps + "\n"
                     + "Today's progress against target: " + percent + "%\n\n"
-                    + "Note: This progress uses steps stored on this device. It is not a verified multi-user leaderboard.";
+                    + "Score submission is temporarily disabled because device-reported steps cannot be securely verified. A trusted, no-cost server validation method is required before competitive scores can be accepted.";
                 AlertDialog.Builder dialog = new AlertDialog.Builder(this)
                     .setTitle(name == null ? "Challenge" : name)
                     .setMessage(message)
-                    .setPositiveButton(joined ? "Submit today's steps" : "Join challenge", (d, w) -> {
-                        if (joined) submitChallengeProgress(challengeId);
-                        else StepFitCloud.joinChallenge(challengeId, (ok, messageText) -> runOnUiThread(() -> {
+                    .setPositiveButton(joined ? "Close" : "Join challenge", (d, w) -> {
+                        if (!joined) StepFitCloud.joinChallenge(challengeId, (ok, messageText) -> runOnUiThread(() -> {
                             msg(messageText);
                             if (ok) showChallengeDetails(challengeId);
                         }));
                     })
                     .setNeutralButton("Leaderboard", (d, w) -> showChallengeLeaderboard(challengeId))
-                    .setNegativeButton("Close", null);
+                    .setNegativeButton("Cancel", null);
                 dialog.show();
             }).addOnFailureListener(e -> msg("Could not load challenge: " + e.getLocalizedMessage()));
     }
