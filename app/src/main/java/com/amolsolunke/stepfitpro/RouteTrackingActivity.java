@@ -112,9 +112,9 @@ public class RouteTrackingActivity extends Activity {
             return;
         }
         StringBuilder gpx = new StringBuilder();
-        gpx.append("<?xml version=\\"1.0\\" encoding=\\"UTF-8\\"?>\\n")
-           .append("<gpx version=\\"1.1\\" creator=\\"StepFit PRO\\" xmlns=\\"http://www.topografix.com/GPX/1/1\\">\\n")
-           .append("<trk><name>StepFit PRO route</name><trkseg>\\n");
+        gpx.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+           .append("<gpx version=\"1.1\" creator=\"StepFit PRO\" xmlns=\"http://www.topografix.com/GPX/1/1\">\n")
+           .append("<trk><name>StepFit PRO route</name><trkseg>\n");
         int validPoints = 0;
         for (String pair : raw.split(";")) {
             String[] parts = pair.split(",");
@@ -123,7 +123,7 @@ public class RouteTrackingActivity extends Activity {
                 double lat = Double.parseDouble(parts[0]);
                 double lon = Double.parseDouble(parts[1]);
                 if (Double.isFinite(lat) && Double.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
-                    gpx.append(String.format(Locale.US, "<trkpt lat=\\"%.7f\\" lon=\\"%.7f\\"></trkpt>\\n", lat, lon));
+                    gpx.append(String.format(Locale.US, "<trkpt lat=\"%.7f\" lon=\"%.7f\"></trkpt>\n", lat, lon));
                     validPoints++;
                 }
             } catch (NumberFormatException ignored) {}
