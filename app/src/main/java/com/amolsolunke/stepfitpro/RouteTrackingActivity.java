@@ -33,7 +33,9 @@ public class RouteTrackingActivity extends Activity {
         android.content.SharedPreferences p = getSharedPreferences("StepFitData", MODE_PRIVATE);
         boolean active = p.getBoolean("route_tracking", false);
         double km = active ? p.getFloat("route_live_km", 0f) : p.getFloat("last_route_km", 0f);
-        long seconds = active ? p.getLong("route_live_seconds", 0) : p.getLong("last_route_duration", 0);
+        long seconds = active
+                ? Math.max(0, (System.currentTimeMillis() - p.getLong("route_started_at", System.currentTimeMillis())) / 1000)
+                : p.getLong("last_route_duration", 0);
         String raw = active ? p.getString("route_live_points", "") : p.getString("last_route_points", "");
         int count = (raw == null || raw.isEmpty()) ? 0 : raw.split(";").length;
         double speed = seconds > 0 ? km / (seconds / 3600.0) : 0;
