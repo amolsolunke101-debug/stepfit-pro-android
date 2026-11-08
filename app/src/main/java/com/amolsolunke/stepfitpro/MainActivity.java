@@ -433,17 +433,16 @@ public class MainActivity extends Activity {
         }
     }
 
-    private int getSteps() {
-        // SharedPreferences may contain an Integer from an older app version
-        // or a Long from the updated service. Read either type safely.
+    private long getSteps() {
+        // Keep the full sensor count as a long; do not impose an artificial
+        // Integer.MAX_VALUE ceiling on the displayed daily step total.
         Object stored = prefs.getAll().get("today_steps");
         long value = stored instanceof Number ? ((Number) stored).longValue() : 0L;
-        if (value < 0) value = 0;
-        return value > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) value;
+        return Math.max(0L, value);
     }
 
     private void showHome() {
-        int steps = getSteps();
+        long steps = getSteps();
         int goal = prefs.getInt("goal", 0);
         float weight = prefs.getFloat("weight", 70f);
         float stride = prefs.getFloat("stride", 75f);
@@ -471,16 +470,17 @@ public class MainActivity extends Activity {
     }
 
     private void showProgress() {
-        int steps = getSteps(); int goal = prefs.getInt("goal", 0);
+        long steps = getSteps(); int goal = prefs.getInt("goal", 0);
         addCard(t(27), String.format(Locale.US, "%,d", steps));
-        addCard(t(26), goal <= 0 ? "No goal set" : Math.min(100, steps * 100 / Math.max(1, goal)) + "%");
-        int total = 0, highest = 0;
+        addCard(t(26), goal <= 0 ? "No goal set" : Math.min(100, (int) (steps * 100.0 / Math.max(1, goal))) + "%");
+        long total = 0L, highest = 0L;
         for (int i = 0; i < 7; i++) {
             String date = dateMinus(i);
             long value = prefs.getLong("history_" + date, 0);
             if (i == 0) value = steps;
-            int count = (int) Math.max(0, Math.min(Integer.MAX_VALUE, value));
-            total += count; highest = Math.max(highest, count);
+            long count = Math.max(0L, value);
+            total = total > Long.MAX_VALUE - count ? Long.MAX_VALUE : total + count;
+            highest = Math.max(highest, count);
             TextView day = text(date + "    " + count + " steps", 14, Color.WHITE, false);
             day.setBackground(shape(card, 12)); content.addView(day, lp(-1, 44));
         }
