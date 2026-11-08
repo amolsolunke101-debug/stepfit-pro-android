@@ -4,7 +4,7 @@ import android.Manifest;
 import android.app.*;
 import android.content.*;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
+import android.graphics.Color;\nimport android.graphics.BitmapFactory;
 import android.graphics.Typeface;
 import android.graphics.Canvas;
 import android.graphics.Paint;
@@ -554,6 +554,14 @@ public class MainActivity extends Activity {
 
     private void showSettings() {
         content.addView(text(t(4), 24, accent, true));
+        ImageView avatar = new ImageView(this);
+        avatar.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        avatar.setBackgroundColor(card);
+        LinearLayout.LayoutParams avatarParams = new LinearLayout.LayoutParams(dp(104), dp(104));
+        avatarParams.gravity = Gravity.CENTER_HORIZONTAL;
+        avatarParams.setMargins(0, dp(8), 0, dp(8));
+        content.addView(avatar, avatarParams);
+        loadProfilePhoto(avatar);
         Button profileButton = new Button(this); profileButton.setText("My Profile");
         profileButton.setOnClickListener(v -> editProfile()); content.addView(profileButton, lp(-1, 50));
         String profileName = prefs.getString("profile_name", "");
@@ -615,6 +623,32 @@ public class MainActivity extends Activity {
                 showPage(0);
             }).show());
         content.addView(resetButton, lp(-1, 50));
+    }
+
+    private void loadProfilePhoto(ImageView target) {
+        if (auth == null || auth.getCurrentUser() == null) {
+            String localUri = prefs.getString("profile_photo_uri", "");
+            if (!localUri.isEmpty()) {
+                try { target.setImageURI(android.net.Uri.parse(localUri)); } catch (Exception ignored) {}
+            }
+            return;
+        }
+        StepFitCloud.loadProfilePhotoUrl(photoUrl -> {
+            if (photoUrl == null || photoUrl.trim().isEmpty() || isFinishing()) return;
+            com.google.firebase.storage.FirebaseStorage.getInstance()
+                .getReferenceFromUrl(photoUrl).getBytes(2 * 1024 * 1024)
+                .addOnSuccessListener(bytes -> runOnUiThread(() -> {
+                    if (isFinishing()) return;
+                    android.graphics.Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                    if (bitmap != null) target.setImageBitmap(bitmap);
+                }))
+                .addOnFailureListener(error -> {
+                    String localUri = prefs.getString("profile_photo_uri", "");
+                    if (!localUri.isEmpty()) runOnUiThread(() -> {
+                        try { target.setImageURI(android.net.Uri.parse(localUri)); } catch (Exception ignored) {}
+                    });
+                });
+        });
     }
 
     private void editProfile() {
