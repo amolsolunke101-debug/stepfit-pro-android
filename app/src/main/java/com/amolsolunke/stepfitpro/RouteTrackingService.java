@@ -84,9 +84,13 @@ public class RouteTrackingService extends Service {
             @Override public void onLocationResult(LocationResult result) {
                 if (result == null) return;
                 for (Location loc : result.getLocations()) {
+                    // Ignore low-quality fixes so GPS drift while standing still
+                    // does not inflate the recorded distance.
+                    if (loc.hasAccuracy() && loc.getAccuracy() > 50f) continue;
                     if (previous != null) {
                         float delta = previous.distanceTo(loc);
-                        if (delta >= 0 && delta < 250) meters += delta;
+                        // Reject large jumps; they are usually GPS drift or a lost fix.
+                        if (delta >= 0 && delta < 100f) meters += delta;
                     }
                     previous = loc;
                     if (points.size() < 12000) points.add(loc.getLatitude() + "," + loc.getLongitude());
@@ -98,9 +102,25 @@ public class RouteTrackingService extends Service {
             }
         };
         try {
-            client.requestLocationUpdates(request, callback, Looper.getMainLooper());
+            client.requestLocationUpdates(request, callback, Looper.getMainLooper())
+                    .addOnFailureListener(error -> {
+                        // The Play Services request is asynchronous. Handle failures
+                        // here so the UI cannot remain stuck in a false "recording" state.
+                        android.content.SharedPreferences prefs =
+                                getSharedPreferences("StepFitData", MODE_PRIVATE);
+                        prefs.edit().putBoolean("route_tracking", false).apply();
+                        if (callback != null) {
+                            client.removeLocationUpdates(callback);
+                            callback = null;
+                        }
+                        stopForeground(true);
+                        stopSelf();
+                    });
         } catch (SecurityException e) {
-            saveAndStop();
+            android.content.SharedPreferences prefs = getSharedPreferences("StepFitData", MODE_PRIVATE);
+            prefs.edit().putBoolean("route_tracking", false).apply();
+            stopForeground(true);
+            stopSelf();
         }
     }
 
