@@ -79,13 +79,22 @@ public class RouteTrackingActivity extends Activity {
                         new AlertDialog.Builder(this).setTitle("Route Details").setView(detail)
                             .setPositiveButton("Close", null)
                             .setNeutralButton("Share GPX", (d, w) -> shareRouteAsGpx(route))
-                            .setNegativeButton("Delete", (d, w) -> deleteSavedRoute(which))
+                            .setNegativeButton("Delete", (d, w) -> confirmDeleteSavedRoute(which))
                             .show();
                     } catch (org.json.JSONException ignored) {}
                 }).setPositiveButton("Close", null).show();
         } catch (org.json.JSONException e) {
             Toast.makeText(this, "Could not read route history.", Toast.LENGTH_LONG).show();
         }
+    }
+
+    private void confirmDeleteSavedRoute(int index) {
+        new AlertDialog.Builder(this)
+                .setTitle("Delete saved route?")
+                .setMessage("This route will be removed from this device. This cannot be undone.")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Delete", (dialog, which) -> deleteSavedRoute(index))
+                .show();
     }
 
     private void deleteSavedRoute(int index) {
