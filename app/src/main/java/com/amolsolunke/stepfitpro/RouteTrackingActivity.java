@@ -121,8 +121,15 @@ public class RouteTrackingActivity extends Activity {
             return;
         }
         StringBuilder gpx = new StringBuilder();
+        java.text.SimpleDateFormat gpxTime = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US);
+        gpxTime.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+        String savedTime = gpxTime.format(new java.util.Date(route.optLong("savedAt", System.currentTimeMillis())));
         gpx.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
            .append("<gpx version=\"1.1\" creator=\"StepFit PRO\" xmlns=\"http://www.topografix.com/GPX/1/1\">\n")
+           .append("<metadata><name>StepFit PRO route</name><time>").append(savedTime)
+           .append("</time><desc>Distance: ")
+           .append(String.format(Locale.US, "%.2f km; Duration: %d seconds", route.optDouble("distanceKm", 0), route.optLong("durationSeconds", 0)))
+           .append("</desc></metadata>\n")
            .append("<trk><name>StepFit PRO route</name><trkseg>\n");
         int validPoints = 0;
         for (String pair : raw.split(";")) {
