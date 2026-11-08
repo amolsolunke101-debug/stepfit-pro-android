@@ -59,7 +59,9 @@ public class RouteTrackingService extends Service {
         }
         startForeground(NOTIFICATION_ID, notification("GPS route is being recorded"));
         if (callback == null) {
-            if (action == null && getSharedPreferences("StepFitData", MODE_PRIVATE).getBoolean("route_tracking", false)) resumeUpdates();
+            // If a route is already active, a repeated Start tap or service
+            // recreation must continue it instead of wiping its recorded path.
+            if (routePrefs.getBoolean("route_tracking", false)) resumeUpdates();
             else beginUpdates();
         }
         return START_STICKY;
