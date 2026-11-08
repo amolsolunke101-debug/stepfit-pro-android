@@ -191,8 +191,14 @@ public class RouteTrackingActivity extends Activity {
                 for (String pair : raw.split(";")) {
                     String[] parts = pair.split(",", -1);
                     if (parts.length < 2) continue;
-                    try { coordinates.add(new float[]{Float.parseFloat(parts[0]), Float.parseFloat(parts[1])}); }
-                    catch (NumberFormatException ignored) {}
+                    try {
+                        float lat = Float.parseFloat(parts[0]);
+                        float lon = Float.parseFloat(parts[1]);
+                        if (Float.isFinite(lat) && Float.isFinite(lon)
+                                && Math.abs(lat) <= 90f && Math.abs(lon) <= 180f) {
+                            coordinates.add(new float[]{lat, lon});
+                        }
+                    } catch (NumberFormatException ignored) {}
                 }
             }
             setBackgroundColor(Color.rgb(18,30,50));
