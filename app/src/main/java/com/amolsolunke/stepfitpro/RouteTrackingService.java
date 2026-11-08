@@ -39,6 +39,20 @@ public class RouteTrackingService extends Service {
         String action = intent == null ? null : intent.getAction();
         android.content.SharedPreferences routePrefs = getSharedPreferences("StepFitData", MODE_PRIVATE);
         if (ACTION_STOP.equals(action)) {
+            // ACTION_STOP can create a fresh service instance after Android
+            // has killed the recording service. Restore the persisted route
+            // before saving so a stop tap cannot overwrite it with an empty route.
+            if (startedAt <= 0 && routePrefs.getBoolean("route_tracking", false)) {
+                meters = Math.max(0, routePrefs.getFloat("route_live_km", 0f) * 1000.0);
+                startedAt = routePrefs.getLong("route_started_at", System.currentTimeMillis());
+                String saved = routePrefs.getString("route_live_points", "");
+                points.clear();
+                if (saved != null && !saved.isEmpty()) {
+                    for (String point : saved.split(";")) {
+                        if (!point.isEmpty() && points.size() < 12000) points.add(point);
+                    }
+                }
+            }
             saveAndStop();
             return START_NOT_STICKY;
         }
