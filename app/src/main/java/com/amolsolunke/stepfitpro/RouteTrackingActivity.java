@@ -67,7 +67,7 @@ public class RouteTrackingActivity extends Activity {
                         detail.setOrientation(LinearLayout.VERTICAL);
                         TextView summary = new TextView(this);
                         summary.setText(String.format(Locale.getDefault(),
-                            "Date: %s\\nDistance: %.2f km\\nDuration: %02d:%02d:%02d\\nGPS points: %d",
+                            "Date: %s\nDistance: %.2f km\nDuration: %02d:%02d:%02d\nGPS points: %d",
                             format.format(new java.util.Date(route.optLong("savedAt", 0))),
                             km, seconds/3600, (seconds%3600)/60, seconds%60,
                             points.isEmpty() ? 0 : points.split(";").length));
