@@ -133,13 +133,22 @@ public class RouteTrackingActivity extends Activity {
            .append("<trk><name>StepFit PRO route</name><trkseg>\n");
         int validPoints = 0;
         for (String pair : raw.split(";")) {
-            String[] parts = pair.split(",");
-            if (parts.length != 2) continue;
+            String[] parts = pair.split(",", -1);
+            if (parts.length < 2) continue;
             try {
                 double lat = Double.parseDouble(parts[0]);
                 double lon = Double.parseDouble(parts[1]);
                 if (Double.isFinite(lat) && Double.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
-                    gpx.append(String.format(Locale.US, "<trkpt lat=\"%.7f\" lon=\"%.7f\"></trkpt>\n", lat, lon));
+                    gpx.append(String.format(Locale.US, "<trkpt lat=\"%.7f\" lon=\"%.7f\">", lat, lon));
+                    if (parts.length >= 3) {
+                        try {
+                            long pointMillis = Long.parseLong(parts[2]);
+                            if (pointMillis > 0) gpx.append("<time>")
+                                    .append(gpxTime.format(new java.util.Date(pointMillis)))
+                                    .append("</time>");
+                        } catch (NumberFormatException ignored) {}
+                    }
+                    gpx.append("</trkpt>\n");
                     validPoints++;
                 }
             } catch (NumberFormatException ignored) {}
@@ -180,8 +189,8 @@ public class RouteTrackingActivity extends Activity {
             super(context);
             if (raw != null && !raw.isEmpty()) {
                 for (String pair : raw.split(";")) {
-                    String[] parts = pair.split(",");
-                    if (parts.length != 2) continue;
+                    String[] parts = pair.split(",", -1);
+                    if (parts.length < 2) continue;
                     try { coordinates.add(new float[]{Float.parseFloat(parts[0]), Float.parseFloat(parts[1])}); }
                     catch (NumberFormatException ignored) {}
                 }
