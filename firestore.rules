@@ -21,6 +21,10 @@ service cloud.firestore {
       allow read: if activeUser() && (request.auth.uid == uid || admin());
       allow create: if admin()
         || (activeUser() && request.auth.uid == uid
+          && request.resource.data.uid == uid
+          && request.resource.data.keys().hasOnly(
+            ['uid', 'email', 'name', 'age', 'gender', 'updatedAt', 'photoUrl']
+          )
           && !('blocked' in request.resource.data));
       allow update: if activeUser() && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
@@ -29,7 +33,25 @@ service cloud.firestore {
       allow update, delete: if admin();
 
       match /dailyStats/{day} {
-        allow read, write: if activeUser() && request.auth.uid == uid;
+        // Match the exact document shape written by StepFitCloud.saveDailyStats().
+        // Users can only write their own date-keyed records; admin cannot be
+        // impersonated through this path.
+        allow read: if activeUser() && request.auth.uid == uid;
+        allow create, update: if activeUser()
+          && request.auth.uid == uid
+          && day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && request.resource.data.keys().hasOnly(
+            ['date', 'steps', 'distanceKm', 'calories', 'updatedAt']
+          )
+          && request.resource.data.date == day
+          && request.resource.data.steps is int
+          && request.resource.data.steps >= 0
+          && request.resource.data.distanceKm is number
+          && request.resource.data.distanceKm >= 0
+          && request.resource.data.calories is number
+          && request.resource.data.calories >= 0
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if activeUser() && request.auth.uid == uid;
       }
     }
 
