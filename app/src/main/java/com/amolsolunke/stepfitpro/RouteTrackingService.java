@@ -37,8 +37,19 @@ public class RouteTrackingService extends Service {
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? null : intent.getAction();
+        android.content.SharedPreferences routePrefs = getSharedPreferences("StepFitData", MODE_PRIVATE);
         if (ACTION_STOP.equals(action)) {
             saveAndStop();
+            return START_NOT_STICKY;
+        }
+        // A sticky restart has a null Intent. Resume only a route that was
+        // already active; never create a new route from an unsolicited restart.
+        if (intent == null && !routePrefs.getBoolean("route_tracking", false)) {
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+        if (action != null && !ACTION_START.equals(action)) {
+            stopSelf();
             return START_NOT_STICKY;
         }
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
