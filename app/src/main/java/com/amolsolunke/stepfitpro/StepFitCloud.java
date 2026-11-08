@@ -27,6 +27,32 @@ public final class StepFitCloud {
         return user == null ? null : user.getUid();
     }
 
+    public interface ProfileResult { void done(boolean ok, String name, String age, String gender); }
+
+    /** Load the signed-in user's cloud profile, creating it from local values only when absent. */
+    public static void loadOrCreateProfile(String localName, String localAge, String localGender, ProfileResult result) {
+        String id = uid();
+        if (id == null) { result.done(false, localName, localAge, localGender); return; }
+        DB.collection("users").document(id).get()
+          .addOnSuccessListener(doc -> {
+              if (doc.exists()) {
+                  String name = doc.getString("name");
+                  String age = doc.getString("age");
+                  String gender = doc.getString("gender");
+                  result.done(true,
+                      name == null ? (localName == null ? "" : localName) : name,
+                      age == null ? (localAge == null ? "" : localAge) : age,
+                      gender == null ? (localGender == null ? "" : localGender) : gender);
+              } else {
+                  syncProfile(localName, localAge, localGender, (ok, message) ->
+                      result.done(ok, localName == null ? "" : localName,
+                          localAge == null ? "" : localAge,
+                          localGender == null ? "" : localGender));
+              }
+          })
+          .addOnFailureListener(e -> result.done(false, localName, localAge, localGender));
+    }
+
     public static void syncProfile(String name, String age, String gender, Result result) {
         String id = uid();
         if (id == null) { result.done(false, "Sign in to sync your profile."); return; }
