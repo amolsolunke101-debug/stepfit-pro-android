@@ -68,6 +68,17 @@ public final class StepFitCloud {
           .addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()));
     }
 
+    public interface PhotoUrlResult { void done(String photoUrl); }
+
+    /** Read the signed-in user's saved profile-photo URL from their own Firestore profile. */
+    public static void loadProfilePhotoUrl(PhotoUrlResult result) {
+        String id = uid();
+        if (id == null) { result.done(null); return; }
+        DB.collection("users").document(id).get()
+          .addOnSuccessListener(doc -> result.done(doc.getString("photoUrl")))
+          .addOnFailureListener(e -> result.done(null));
+    }
+
     public static void uploadProfilePhoto(Uri photo, Result result) {
         String id = uid();
         if (id == null || photo == null) { result.done(false, "Sign in and choose a photo."); return; }
