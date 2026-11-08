@@ -50,9 +50,9 @@ public class MainActivity extends Activity {
 
     // Only languages with complete UI translations are selectable.
     // Additional Indian languages will be enabled after their translations are complete.
-    private final String[] langCodes = {"en", "mr"};
+    private final String[] langCodes = {"en", "mr", "hi"};
 
-    private final String[] langNames = {"English", "मराठी"};
+    private final String[] langNames = {"English", "मराठी", "हिन्दी"};
 
     private final String[][] labels = {
       {
@@ -83,6 +83,20 @@ public class MainActivity extends Activity {
         "परवानगी आवश्यक"
       },
       {
+        "होम","प्रगति","इतिहास","चार्ट","सेटिंग्स","जानकारी",
+        "आज के कदम","दूरी","कैलोरी","दैनिक लक्ष्य","लक्ष्य तय करें",
+        "भाषा","थीम","सहेजें","रद्द करें","पिछले 7 दिन",
+        "कदमों की कोई सीमा नहीं — चलते रहें!","स्टेप सेंसर उपलब्ध है",
+        "स्टेप सेंसर उपलब्ध नहीं है","आज की गिनती रीसेट करें",
+        "वज़न (किलो)","कदम की लंबाई (सेमी)","गहरा नीला",
+        "समुद्री नीला","वन हरा","बैंगनी","लक्ष्य की प्रगति",
+        "कुल कदम","औसत कदम","सबसे अधिक कदम वाला दिन",
+        "StepFit PRO के बारे में","ऑफलाइन स्टेप काउंटर",
+        "भाषा चुनें","थीम चुनें","सेटिंग्स सहेजी गईं",
+        "लक्ष्य दर्ज करें (0 = कोई लक्ष्य नहीं)","सेंसर की अनुमति आवश्यक",
+        "अनुमति आवश्यक"
+      },
+      {
         "Inicio","Progreso","Historial","Gráficos","Ajustes",
         "Acerca de","Pasos de hoy","Distancia","Calorías",
         "Meta diaria","Definir meta","Idioma","Tema","Guardar",
@@ -100,6 +114,7 @@ public class MainActivity extends Activity {
 
     private String t(int i) {
         if ("mr".equals(language)) return labels[1][i];
+        if ("hi".equals(language)) return labels[2][i];
         return labels[0][i];
     }
 
