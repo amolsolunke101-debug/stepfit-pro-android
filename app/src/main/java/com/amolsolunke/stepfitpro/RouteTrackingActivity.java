@@ -255,10 +255,20 @@ public class RouteTrackingActivity extends Activity {
     }
 
     private void stop() {
+        android.content.SharedPreferences prefs = getSharedPreferences("StepFitData", MODE_PRIVATE);
+        if (!prefs.getBoolean("route_tracking", false)) {
+            Toast.makeText(this, "No active GPS route to stop.", Toast.LENGTH_SHORT).show();
+            refresh();
+            return;
+        }
         Intent service = new Intent(this, RouteTrackingService.class).setAction(RouteTrackingService.ACTION_STOP);
-        startService(service);
-        handler.removeCallbacks(refresher);
-        handler.postDelayed(this::refresh, 500);
+        try {
+            startService(service);
+            handler.removeCallbacks(refresher);
+            handler.postDelayed(this::refresh, 500);
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not stop GPS tracking. Please try again.", Toast.LENGTH_LONG).show();
+        }
     }
 
     @Override
