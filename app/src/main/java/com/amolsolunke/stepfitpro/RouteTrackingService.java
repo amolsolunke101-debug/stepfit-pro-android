@@ -154,13 +154,28 @@ public class RouteTrackingService extends Service {
         }
     }
 
+    // SharedPreferences is not designed for an unlimited collection of large GPS tracks.
+    // Keep the full live track while recording, but compact completed tracks so route history
+    // remains lightweight and does not create oversized preference files.
+    private String compactPointsForHistory() {
+        final int maxSavedPoints = 3000;
+        if (points.size() <= maxSavedPoints) return android.text.TextUtils.join(";", points);
+        ArrayList<String> compact = new ArrayList<>(maxSavedPoints);
+        double step = (points.size() - 1.0) / (maxSavedPoints - 1.0);
+        for (int i = 0; i < maxSavedPoints; i++) {
+            int index = (int)Math.round(i * step);
+            compact.add(points.get(Math.min(points.size() - 1, index)));
+        }
+        return android.text.TextUtils.join(";", compact);
+    }
+
     private void saveAndStop() {
         if (callback != null) {
             client.removeLocationUpdates(callback);
             callback = null;
         }
         long duration = startedAt > 0 ? Math.max(0, (System.currentTimeMillis() - startedAt) / 1000) : 0;
-        String joinedPoints = android.text.TextUtils.join(";", points);
+        String joinedPoints = compactPointsForHistory();
         android.content.SharedPreferences prefs = getSharedPreferences("StepFitData", MODE_PRIVATE);
         prefs.edit()
                 .putFloat("last_route_km", (float)(meters / 1000.0))
@@ -178,7 +193,7 @@ public class RouteTrackingService extends Service {
             route.put("points", joinedPoints);
             org.json.JSONArray updated = new org.json.JSONArray();
             updated.put(route);
-            for (int i = 0; i < history.length() && i < 19; i++) updated.put(history.getJSONObject(i));
+            for (int i = 0; i < history.length() && i < 9; i++) updated.put(history.getJSONObject(i));
             prefs.edit().putString("route_history", updated.toString()).apply();
         } catch (org.json.JSONException ignored) {
             // Keep the most recent route even if an older history record is malformed.
