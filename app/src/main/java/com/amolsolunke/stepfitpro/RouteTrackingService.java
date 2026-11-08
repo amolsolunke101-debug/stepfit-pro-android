@@ -54,7 +54,22 @@ public class RouteTrackingService extends Service {
         }
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            stopSelf();
+            // If permission was revoked while a route was active, restore its
+            // locally persisted data before saving so the partial route is not lost.
+            if (routePrefs.getBoolean("route_tracking", false)) {
+                meters = Math.max(0, routePrefs.getFloat("route_live_km", 0f) * 1000.0);
+                startedAt = routePrefs.getLong("route_started_at", System.currentTimeMillis());
+                String saved = routePrefs.getString("route_live_points", "");
+                points.clear();
+                if (saved != null && !saved.isEmpty()) {
+                    for (String point : saved.split(";")) {
+                        if (!point.isEmpty() && points.size() < 12000) points.add(point);
+                    }
+                }
+                saveAndStop();
+            } else {
+                stopSelf();
+            }
             return START_NOT_STICKY;
         }
         startForeground(NOTIFICATION_ID, notification("GPS route is being recorded"));
