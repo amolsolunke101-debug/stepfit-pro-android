@@ -150,6 +150,27 @@ public class MainActivity extends Activity {
         buildShell();
         showPage(0);
         startStepService();
+
+        // Restore an existing cloud profile on this device, or create the
+        // first cloud profile from locally saved details after sign-in.
+        if (auth != null && auth.getCurrentUser() != null) {
+            StepFitCloud.loadOrCreateProfile(
+                prefs.getString("profile_name", ""),
+                prefs.getString("profile_age", ""),
+                prefs.getString("profile_gender", ""),
+                (ok, name, age, gender) -> runOnUiThread(() -> {
+                    if (!ok || isFinishing()) return;
+                    String oldName = prefs.getString("profile_name", "");
+                    prefs.edit().putString("profile_name", name == null ? "" : name)
+                        .putString("profile_age", age == null ? "" : age)
+                        .putString("profile_gender", gender == null ? "" : gender).apply();
+                    if (!oldName.equals(name == null ? "" : name) && content != null) {
+                        buildShell();
+                        showPage(page);
+                    }
+                })
+            );
+        }
     }
 
     private void showAuthScreen() {
