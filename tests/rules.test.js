@@ -52,6 +52,43 @@ describe("StepFit PRO Firestore rules", () => {
     }));
   });
 
+  it("allows a friend request when the recipient profile has no blocked field", async () => {
+    await env.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(), "users/alice"), { uid: "alice" });
+      await setDoc(doc(context.firestore(), "users/bob"), { uid: "bob", name: "Bob" });
+    });
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(addDoc(collection(db, "friendRequests"), {
+      fromUid: "alice", toUid: "bob", status: "pending", createdAt: serverTimestamp()
+    }));
+  });
+
+  it("allows a club owner to create a club and a new member to join", async () => {
+    const alice = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(setDoc(doc(alice, "clubs/club1"), {
+      name: "Walkers", ownerUid: "alice", memberUids: ["alice"]
+    }));
+    const bob = env.authenticatedContext("bob").firestore();
+    await assertSucceeds(updateDoc(doc(bob, "clubs/club1"), {
+      memberUids: ["alice", "bob"]
+    }));
+  });
+
+  it("allows challenge participants to write only their own daily progress", async () => {
+    await env.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(), "challenges/ch1"), {
+        name: "Steps", participantUids: ["alice"]
+      });
+    });
+    const alice = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(setDoc(doc(alice, "challenges/ch1/dailyProgress/alice_2026-11-08"), {
+      uid: "alice", day: "2026-11-08", steps: 5000, updatedAt: serverTimestamp()
+    }));
+    await assertFails(setDoc(doc(alice, "challenges/ch1/dailyProgress/bob_2026-11-08"), {
+      uid: "bob", day: "2026-11-08", steps: 5000, updatedAt: serverTimestamp()
+    }));
+  });
+
   it("allows recipient to accept a friend request but not the sender", async () => {
     await env.withSecurityRulesDisabled(async context => {
       await setDoc(doc(context.firestore(), "users/alice"), { uid: "alice" });
@@ -86,6 +123,16 @@ describe("StepFit PRO Firestore rules", () => {
 
 describe("StepFit PRO Storage rules", () => {
   it("allows an owner to upload an image to their profile folder", async () => {
+    const storage = env.authenticatedContext("alice").storage();
+    await assertSucceeds(uploadBytes(ref(storage, "profilePhotos/alice/avatar"), new Uint8Array([1,2,3]), {
+      contentType: "image/jpeg"
+    }));
+  });
+
+  it("allows profile photo upload when an existing profile has no blocked field", async () => {
+    await env.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(), "users/alice"), { uid: "alice", name: "Alice" });
+    });
     const storage = env.authenticatedContext("alice").storage();
     await assertSucceeds(uploadBytes(ref(storage, "profilePhotos/alice/avatar"), new Uint8Array([1,2,3]), {
       contentType: "image/jpeg"
