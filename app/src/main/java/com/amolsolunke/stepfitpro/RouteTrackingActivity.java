@@ -50,9 +50,9 @@ public class RouteTrackingActivity extends Activity {
                 return;
             }
             String[] labels = new String[history.length()];
+            java.text.SimpleDateFormat format = new java.text.SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault());
             for (int i = 0; i < history.length(); i++) {
                 org.json.JSONObject route = history.getJSONObject(i);
-                java.text.SimpleDateFormat format = new java.text.SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault());
                 String date = format.format(new java.util.Date(route.optLong("savedAt", 0)));
                 labels[i] = date + " • " + String.format(Locale.getDefault(), "%.2f km", route.optDouble("distanceKm", 0));
             }
@@ -67,7 +67,8 @@ public class RouteTrackingActivity extends Activity {
                         detail.setOrientation(LinearLayout.VERTICAL);
                         TextView summary = new TextView(this);
                         summary.setText(String.format(Locale.getDefault(),
-                            "Distance: %.2f km\nDuration: %02d:%02d:%02d\nGPS points: %d",
+                            "Date: %s\\nDistance: %.2f km\\nDuration: %02d:%02d:%02d\\nGPS points: %d",
+                            format.format(new java.util.Date(route.optLong("savedAt", 0))),
                             km, seconds/3600, (seconds%3600)/60, seconds%60,
                             points.isEmpty() ? 0 : points.split(";").length));
                         summary.setTextColor(Color.WHITE);
@@ -75,13 +76,68 @@ public class RouteTrackingActivity extends Activity {
                         detail.addView(summary);
                         detail.addView(new RoutePreview(this, points), new LinearLayout.LayoutParams(-1, dp(220)));
                         detail.setBackgroundColor(Color.rgb(10,18,38));
-                        new AlertDialog.Builder(this).setTitle("Route Preview").setView(detail)
-                            .setPositiveButton("Close", null).show();
+                        new AlertDialog.Builder(this).setTitle("Route Details").setView(detail)
+                            .setPositiveButton("Close", null)
+                            .setNeutralButton("Share GPX", (d, w) -> shareRouteAsGpx(route))
+                            .setNegativeButton("Delete", (d, w) -> deleteSavedRoute(which))
+                            .show();
                     } catch (org.json.JSONException ignored) {}
                 }).setPositiveButton("Close", null).show();
         } catch (org.json.JSONException e) {
             Toast.makeText(this, "Could not read route history.", Toast.LENGTH_LONG).show();
         }
+    }
+
+    private void deleteSavedRoute(int index) {
+        android.content.SharedPreferences prefs = getSharedPreferences("StepFitData", MODE_PRIVATE);
+        try {
+            org.json.JSONArray history = new org.json.JSONArray(prefs.getString("route_history", "[]"));
+            if (index < 0 || index >= history.length()) return;
+            org.json.JSONArray updated = new org.json.JSONArray();
+            for (int i = 0; i < history.length(); i++) {
+                if (i != index) updated.put(history.getJSONObject(i));
+            }
+            prefs.edit().putString("route_history", updated.toString()).apply();
+            Toast.makeText(this, "Route deleted from this device.", Toast.LENGTH_SHORT).show();
+            showRouteHistory();
+        } catch (org.json.JSONException e) {
+            Toast.makeText(this, "Could not delete this route.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void shareRouteAsGpx(org.json.JSONObject route) {
+        String raw = route.optString("points", "");
+        if (raw.isEmpty()) {
+            Toast.makeText(this, "This route has no GPS points to export.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        StringBuilder gpx = new StringBuilder();
+        gpx.append("<?xml version=\\"1.0\\" encoding=\\"UTF-8\\"?>\\n")
+           .append("<gpx version=\\"1.1\\" creator=\\"StepFit PRO\\" xmlns=\\"http://www.topografix.com/GPX/1/1\\">\\n")
+           .append("<trk><name>StepFit PRO route</name><trkseg>\\n");
+        int validPoints = 0;
+        for (String pair : raw.split(";")) {
+            String[] parts = pair.split(",");
+            if (parts.length != 2) continue;
+            try {
+                double lat = Double.parseDouble(parts[0]);
+                double lon = Double.parseDouble(parts[1]);
+                if (Double.isFinite(lat) && Double.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+                    gpx.append(String.format(Locale.US, "<trkpt lat=\\"%.7f\\" lon=\\"%.7f\\"></trkpt>\\n", lat, lon));
+                    validPoints++;
+                }
+            } catch (NumberFormatException ignored) {}
+        }
+        gpx.append("</trkseg></trk></gpx>");
+        if (validPoints < 2) {
+            Toast.makeText(this, "At least two valid GPS points are needed for GPX export.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        Intent share = new Intent(Intent.ACTION_SEND);
+        share.setType("application/gpx+xml");
+        share.putExtra(Intent.EXTRA_SUBJECT, "StepFit PRO GPS route");
+        share.putExtra(Intent.EXTRA_TEXT, gpx.toString());
+        startActivity(Intent.createChooser(share, "Share GPX route"));
     }
 
     private int dp(float value) {
