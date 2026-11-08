@@ -2,7 +2,7 @@
   "name": "stepfit-pro-rules-tests",
   "private": true,
   "scripts": {
-    "test:rules": "firebase emulators:exec --only auth,firestore,storage \"mocha --timeout 10000 tests/rules.test.js\""
+    "test:rules": "firebase emulators:exec --project step-fit-pro-8e0ce --only auth,firestore,storage \"mocha --timeout 10000 tests/rules.test.js\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^4.0.1",
