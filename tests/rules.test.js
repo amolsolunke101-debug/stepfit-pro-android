@@ -74,14 +74,17 @@ describe("StepFit PRO Firestore rules", () => {
     }));
   });
 
-  it("allows challenge participants to write only their own daily progress", async () => {
+  it("rejects client-submitted challenge scores, including a participant's own score", async () => {
     await env.withSecurityRulesDisabled(async context => {
       await setDoc(doc(context.firestore(), "challenges/ch1"), {
         name: "Steps", participantUids: ["alice"]
       });
+      await setDoc(doc(context.firestore(), "challenges/ch1/dailyProgress/alice_2026-11-08"), {
+        uid: "alice", day: "2026-11-08", steps: 4000, updatedAt: new Date()
+      });
     });
     const alice = env.authenticatedContext("alice").firestore();
-    await assertSucceeds(setDoc(doc(alice, "challenges/ch1/dailyProgress/alice_2026-11-08"), {
+    await assertFails(setDoc(doc(alice, "challenges/ch1/dailyProgress/alice_2026-11-08"), {
       uid: "alice", day: "2026-11-08", steps: 5000, updatedAt: serverTimestamp()
     }));
     await assertFails(setDoc(doc(alice, "challenges/ch1/dailyProgress/bob_2026-11-08"), {
