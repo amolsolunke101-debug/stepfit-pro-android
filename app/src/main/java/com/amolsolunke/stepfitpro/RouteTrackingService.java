@@ -128,21 +128,18 @@ public class RouteTrackingService extends Service {
                     .addOnFailureListener(error -> {
                         // The Play Services request is asynchronous. Handle failures
                         // here so the UI cannot remain stuck in a false "recording" state.
-                        android.content.SharedPreferences prefs =
-                                getSharedPreferences("StepFitData", MODE_PRIVATE);
-                        prefs.edit().putBoolean("route_tracking", false).apply();
                         if (callback != null) {
                             client.removeLocationUpdates(callback);
                             callback = null;
                         }
-                        stopForeground(true);
-                        stopSelf();
+                        // Preserve any points collected before the provider failed.
+                        // Saving also clears the active flag and keeps the partial route
+                        // available in local history instead of silently discarding it.
+                        saveAndStop();
                     });
         } catch (SecurityException e) {
-            android.content.SharedPreferences prefs = getSharedPreferences("StepFitData", MODE_PRIVATE);
-            prefs.edit().putBoolean("route_tracking", false).apply();
-            stopForeground(true);
-            stopSelf();
+            // Keep a recoverable partial route if permission changes while recording.
+            saveAndStop();
         }
     }
 
