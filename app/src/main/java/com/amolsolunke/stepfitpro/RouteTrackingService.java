@@ -204,7 +204,7 @@ public class RouteTrackingService extends Service {
                 .putString("last_route_points", joinedPoints)
                 .putBoolean("route_tracking", false).apply();
 
-        // Keep the latest 20 completed routes locally on the device.
+        // Keep the latest 10 completed routes locally on the device (new route + 9 older routes).
         try {
             org.json.JSONArray history = new org.json.JSONArray(prefs.getString("route_history", "[]"));
             org.json.JSONObject route = new org.json.JSONObject();
