@@ -106,7 +106,7 @@ public class RouteTrackingService extends Service {
                         if (delta >= 0 && delta < 100f) meters += delta;
                     }
                     previous = loc;
-                    if (points.size() < 12000) points.add(loc.getLatitude() + "," + loc.getLongitude());
+                    if (points.size() < 12000) {\n                        long pointTime = loc.getTime() > 0 ? loc.getTime() : System.currentTimeMillis();\n                        points.add(loc.getLatitude() + "," + loc.getLongitude() + "," + pointTime);\n                    }
                 }
                 getSharedPreferences("StepFitData", MODE_PRIVATE).edit()
                         .putFloat("route_live_km", (float)(meters / 1000.0))
