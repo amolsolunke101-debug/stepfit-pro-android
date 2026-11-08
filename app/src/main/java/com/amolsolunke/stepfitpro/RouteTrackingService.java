@@ -91,7 +91,14 @@ public class RouteTrackingService extends Service {
     }
 
     private void requestUpdates() {
-        LocationRequest request = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000)
+        // Use high accuracy only when the user grants precise location.
+        // Approximate-only permission still supports a lower-accuracy route
+        // instead of silently producing few or no points.
+        boolean preciseLocation = ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        int priority = preciseLocation ? Priority.PRIORITY_HIGH_ACCURACY
+                : Priority.PRIORITY_BALANCED_POWER_ACCURACY;
+        LocationRequest request = new LocationRequest.Builder(priority, 3000)
                 .setMinUpdateDistanceMeters(2).build();
         callback = new LocationCallback() {
             @Override public void onLocationResult(LocationResult result) {
