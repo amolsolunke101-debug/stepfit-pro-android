@@ -326,15 +326,49 @@ public class CommunityActivity extends Activity {
         }).addOnFailureListener(e -> msg("Could not load users: " + e.getLocalizedMessage()));
     }
 
+    private void searchAdminUsers() {
+        String[] fields = {"Name starts with", "Email starts with"};
+        new AlertDialog.Builder(this).setTitle("Search users")
+            .setItems(fields, (dialog, which) -> field(fields[which] + " (case-sensitive)", prefix -> {
+                if (prefix.isEmpty()) { msg("Enter at least one character."); return; }
+                String field = which == 0 ? "name" : "email";
+                FirebaseFirestore.getInstance().collection("users")
+                    .orderBy(field).startAt(prefix).endAt(prefix + "\\uf8ff").limit(25).get()
+                    .addOnSuccessListener(snapshot -> {
+                        if (snapshot.isEmpty()) { msg("No matching users found."); return; }
+                        java.util.List<com.google.firebase.firestore.DocumentSnapshot> docs = snapshot.getDocuments();
+                        String[] labels = new String[docs.size()];
+                        for (int i = 0; i < docs.size(); i++) {
+                            com.google.firebase.firestore.DocumentSnapshot doc = docs.get(i);
+                            String name = doc.getString("name");
+                            String email = doc.getString("email");
+                            boolean blocked = Boolean.TRUE.equals(doc.getBoolean("blocked"));
+                            labels[i] = (name == null || name.isEmpty() ? "Unnamed user" : name)
+                                + " • " + (email == null ? doc.getId() : email) + (blocked ? " • SUSPENDED" : "");
+                        }
+                        new AlertDialog.Builder(this).setTitle("Search results • max 25")
+                            .setItems(labels, (d, index) -> {
+                                String uid = docs.get(index).getId();
+                                boolean blocked = Boolean.TRUE.equals(docs.get(index).getBoolean("blocked"));
+                                new AlertDialog.Builder(this).setTitle("Manage account").setMessage(labels[index])
+                                    .setPositiveButton(blocked ? "Unblock" : "Block", (x, w) ->
+                                        StepFitCloud.setUserBlocked(uid, !blocked, this::result))
+                                    .setNegativeButton("Cancel", null).show();
+                            }).setPositiveButton("Close", null).show();
+                    }).addOnFailureListener(e -> msg("Search failed: " + e.getLocalizedMessage()));
+            })).setNegativeButton("Close", null).show();
+    }
+
     private void openAdmin() {
         StepFitCloud.isAdmin((allowed, message) -> runOnUiThread(() -> {
             if (!allowed) { msg(message); return; }
             new AlertDialog.Builder(this).setTitle("Protected Admin Panel")
-              .setItems(new String[]{"Manage user list","Block user by UID","Unblock user by UID","Create challenge"}, (d, which) -> {
+              .setItems(new String[]{"Manage user list","Search users by name/email","Block user by UID","Unblock user by UID","Create challenge"}, (d, which) -> {
                   if (which == 0) showAdminUsers();
-                  else if (which == 3) createChallengeDialog();
+                  else if (which == 1) searchAdminUsers();
+                  else if (which == 4) createChallengeDialog();
                   else field("Target user's UID", id ->
-                      StepFitCloud.setUserBlocked(id, which == 1, this::result));
+                      StepFitCloud.setUserBlocked(id, which == 2, this::result));
               })
               .setNegativeButton("Close", null).show();
         }));
