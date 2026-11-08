@@ -266,31 +266,64 @@ public class CommunityActivity extends Activity {
     }
 
     private void showAdminUsers() {
-        FirebaseFirestore.getInstance().collection("users").limit(100).get()
-            .addOnSuccessListener(snapshot -> {
-                if (snapshot.isEmpty()) { msg("No user profiles found."); return; }
-                java.util.List<com.google.firebase.firestore.DocumentSnapshot> docs = snapshot.getDocuments();
-                String[] labels = new String[docs.size()];
-                for (int i = 0; i < docs.size(); i++) {
-                    com.google.firebase.firestore.DocumentSnapshot doc = docs.get(i);
-                    String name = doc.getString("name");
-                    String email = doc.getString("email");
-                    boolean blocked = Boolean.TRUE.equals(doc.getBoolean("blocked"));
-                    labels[i] = (name == null || name.isEmpty() ? "Unnamed user" : name)
-                        + " • " + (email == null ? doc.getId() : email)
-                        + (blocked ? " • SUSPENDED" : "");
-                }
-                new AlertDialog.Builder(this).setTitle("Users (up to 100)")
-                    .setItems(labels, (dialog, which) -> {
-                        String uid = docs.get(which).getId();
-                        boolean blocked = Boolean.TRUE.equals(docs.get(which).getBoolean("blocked"));
-                        new AlertDialog.Builder(this).setTitle("Manage account")
-                            .setMessage(labels[which])
-                            .setPositiveButton(blocked ? "Unblock" : "Block", (d, w) ->
-                                StepFitCloud.setUserBlocked(uid, !blocked, this::result))
-                            .setNegativeButton("Cancel", null).show();
-                    }).setPositiveButton("Close", null).show();
-            }).addOnFailureListener(e -> msg("Could not load users: " + e.getLocalizedMessage()));
+        showAdminUsersPage(new java.util.ArrayList<>(), 0);
+    }
+
+    private void showAdminUsersPage(
+            java.util.List<com.google.firebase.firestore.DocumentSnapshot> cursors, int pageIndex) {
+        com.google.firebase.firestore.CollectionReference users =
+            FirebaseFirestore.getInstance().collection("users");
+        com.google.firebase.firestore.Query query = users
+            .orderBy(com.google.firebase.firestore.FieldPath.documentId()).limit(25);
+        if (pageIndex > 0 && pageIndex <= cursors.size())
+            query = query.startAfter(cursors.get(pageIndex - 1));
+
+        query.get().addOnSuccessListener(snapshot -> {
+            if (snapshot.isEmpty()) {
+                if (pageIndex == 0) msg("No user profiles found.");
+                else msg("No more users on this page.");
+                return;
+            }
+            java.util.List<com.google.firebase.firestore.DocumentSnapshot> docs = snapshot.getDocuments();
+            String[] labels = new String[docs.size()];
+            for (int i = 0; i < docs.size(); i++) {
+                com.google.firebase.firestore.DocumentSnapshot doc = docs.get(i);
+                String name = doc.getString("name");
+                String email = doc.getString("email");
+                boolean blocked = Boolean.TRUE.equals(doc.getBoolean("blocked"));
+                labels[i] = (name == null || name.isEmpty() ? "Unnamed user" : name)
+                    + " • " + (email == null ? doc.getId() : email)
+                    + (blocked ? " • SUSPENDED" : "");
+            }
+            java.util.List<com.google.firebase.firestore.DocumentSnapshot> nextCursors =
+                new java.util.ArrayList<>(cursors);
+            AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Users • Page " + (pageIndex + 1))
+                .setItems(labels, (d, which) -> {
+                    String uid = docs.get(which).getId();
+                    boolean blocked = Boolean.TRUE.equals(docs.get(which).getBoolean("blocked"));
+                    new AlertDialog.Builder(this).setTitle("Manage account")
+                        .setMessage(labels[which])
+                        .setPositiveButton(blocked ? "Unblock" : "Block", (x, w) ->
+                            StepFitCloud.setUserBlocked(uid, !blocked, this::result))
+                        .setNegativeButton("Cancel", null).show();
+                })
+                .setNegativeButton(pageIndex > 0 ? "Previous" : "Close", (d, w) -> {
+                    if (pageIndex > 0) showAdminUsersPage(nextCursors, pageIndex - 1);
+                })
+                .setPositiveButton("Next", (d, w) -> {
+                    if (docs.size() == 25) {
+                        if (nextCursors.size() == pageIndex) nextCursors.add(docs.get(docs.size() - 1));
+                        showAdminUsersPage(nextCursors, pageIndex + 1);
+                    } else msg("You have reached the end of the user list.");
+                })
+                .setNeutralButton("Done", null).create();
+            dialog.setOnShowListener(ignored -> {
+                dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setEnabled(pageIndex > 0);
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(docs.size() == 25);
+            });
+            dialog.show();
+        }).addOnFailureListener(e -> msg("Could not load users: " + e.getLocalizedMessage()));
     }
 
     private void openAdmin() {
