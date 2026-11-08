@@ -34,6 +34,7 @@ public class StepCounterService extends Service implements SensorEventListener {
     public void onCreate() {
         super.onCreate();
         prefs = getSharedPreferences("StepFitData", MODE_PRIVATE);
+        normalizeDayAtStartup();
         createNotificationChannel();
 
         // Android requires a foreground notification for a foreground service.
@@ -107,6 +108,23 @@ public class StepCounterService extends Service implements SensorEventListener {
     private void saveDayIfNeeded(String today, String savedDate, long steps) {
         if (!savedDate.isEmpty() && !savedDate.equals(today)) {
             prefs.edit().putLong("history_" + savedDate, Math.max(0L, steps)).apply();
+        }
+    }
+
+    // Roll the daily counter forward as soon as the service starts, even if
+    // Android delivered no step-sensor event around midnight.
+    private void normalizeDayAtStartup() {
+        String today = getToday();
+        String savedDate = prefs.getString("date", "");
+        if (!savedDate.isEmpty() && !savedDate.equals(today)) {
+            long previousSteps = Math.max(0L, getStoredLong("today_steps", 0L));
+            saveDayIfNeeded(today, savedDate, previousSteps);
+            prefs.edit()
+                    .putLong("today_steps", 0L)
+                    .putLong("base_steps", -1L)
+                    .putLong("last_raw", -1L)
+                    .putString("date", today)
+                    .apply();
         }
     }
 
