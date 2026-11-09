@@ -615,6 +615,11 @@ public class MainActivity extends Activity {
         languageButton.setOnClickListener(v -> chooseLanguage()); content.addView(languageButton, lp(-1, 50));
         Button themeButton = new Button(this); themeButton.setText(t(12));
         themeButton.setOnClickListener(v -> chooseTheme()); content.addView(themeButton, lp(-1, 50));
+        // Keep the About page reachable from Settings; it has no dedicated
+        // bottom-navigation slot so this is its explicit entry point.
+        Button aboutButton = new Button(this); aboutButton.setText(t(5));
+        aboutButton.setOnClickListener(v -> showPage(3));
+        content.addView(aboutButton, lp(-1, 50));
         Button gpsButton = new Button(this); gpsButton.setText("GPS Route Tracking");
         gpsButton.setOnClickListener(v -> startActivity(new Intent(this, RouteTrackingActivity.class)));
         content.addView(gpsButton, lp(-1, 50));
