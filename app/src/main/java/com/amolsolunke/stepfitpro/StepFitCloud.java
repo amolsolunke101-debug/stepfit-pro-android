@@ -33,6 +33,11 @@ public final class StepFitCloud {
     public static void loadOrCreateProfile(String localName, String localAge, String localGender, ProfileResult result) {
         String id = uid();
         if (id == null) { result.done(false, localName, localAge, localGender); return; }
+        // Capture account-owned values before the asynchronous read. If the
+        // device account changes while the request is pending, never create
+        // the new account's profile using the previous account's local data.
+        FirebaseUser requestedUser = FirebaseAuth.getInstance().getCurrentUser();
+        final String requestedEmail = requestedUser == null ? null : requestedUser.getEmail();
         DB.collection("users").document(id).get()
           .addOnSuccessListener(doc -> {
               if (doc.exists()) {
@@ -55,11 +60,10 @@ public final class StepFitCloud {
                       missingFields.put("gender", localGender.trim());
                       gender = localGender.trim();
                   }
-                  FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
                   String cloudEmail = doc.getString("email");
                   if ((cloudEmail == null || cloudEmail.trim().isEmpty())
-                          && currentUser != null && currentUser.getEmail() != null) {
-                      missingFields.put("email", currentUser.getEmail());
+                          && requestedEmail != null && !requestedEmail.trim().isEmpty()) {
+                      missingFields.put("email", requestedEmail);
                   }
                   if (!missingFields.isEmpty()) {
                       missingFields.put("updatedAt", FieldValue.serverTimestamp());
@@ -71,10 +75,23 @@ public final class StepFitCloud {
                       age == null ? (localAge == null ? "" : localAge) : age,
                       gender == null ? (localGender == null ? "" : localGender) : gender);
               } else {
-                  syncProfile(localName, localAge, localGender, (ok, message) ->
-                      result.done(ok, localName == null ? "" : localName,
+                  // Write the profile to the UID captured before the read,
+                  // rather than resolving FirebaseAuth's current UID again.
+                  Map<String,Object> data = new HashMap<>();
+                  data.put("uid", id);
+                  data.put("email", requestedEmail);
+                  data.put("name", localName == null ? "" : localName);
+                  data.put("age", localAge == null ? "" : localAge);
+                  data.put("gender", localGender == null ? "" : localGender);
+                  data.put("updatedAt", FieldValue.serverTimestamp());
+                  DB.collection("users").document(id)
+                      .set(data, com.google.firebase.firestore.SetOptions.merge())
+                      .addOnSuccessListener(v -> result.done(true,
+                          localName == null ? "" : localName,
                           localAge == null ? "" : localAge,
-                          localGender == null ? "" : localGender));
+                          localGender == null ? "" : localGender))
+                      .addOnFailureListener(e -> result.done(false,
+                          localName, localAge, localGender));
               }
           })
           .addOnFailureListener(e -> result.done(false, localName, localAge, localGender));
