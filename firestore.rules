@@ -33,105 +33,11 @@ service cloud.firestore {
       allow update, delete: if admin();
 
       match /routes/{routeId} {
-        // Precise GPS trails remain private to the owning account.
+        // Private GPS trails are accessible only by their owner.
         allow read: if activeUser() && request.auth.uid == uid;
         allow create, update: if activeUser()
           && request.auth.uid == uid
-          && routeId.matches('^[A-Za-z0-9_-]{1,64}
-        // Match the exact document shape written by StepFitCloud.saveDailyStats().
-        // Users can only write their own date-keyed records; admin cannot be
-        // impersonated through this path.
-        allow read: if activeUser() && request.auth.uid == uid;
-        allow create, update: if activeUser()
-          && request.auth.uid == uid
-          && day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
-          && request.resource.data.keys().hasOnly(
-            ['date', 'steps', 'distanceKm', 'calories', 'updatedAt']
-          )
-          && request.resource.data.date == day
-          && request.resource.data.steps is int
-          && request.resource.data.steps >= 0
-          && request.resource.data.distanceKm is number
-          && request.resource.data.distanceKm >= 0
-          && request.resource.data.calories is number
-          && request.resource.data.calories >= 0
-          && request.resource.data.updatedAt == request.time;
-        allow delete: if activeUser() && request.auth.uid == uid;
-      }
-    }
-
-    match /friendRequests/{requestId} {
-      allow create: if activeUser()
-        && request.resource.data.keys().hasOnly(['fromUid', 'toUid', 'status', 'createdAt'])
-        && request.resource.data.fromUid == request.auth.uid
-        && request.resource.data.toUid is string
-        && request.resource.data.toUid != request.auth.uid
-        && request.resource.data.status == 'pending'
-        && exists(/databases/$(database)/documents/users/$(request.resource.data.toUid))
-        && get(/databases/$(database)/documents/users/$(request.resource.data.toUid)).data.get('blocked', false) != true;
-      allow read: if activeUser() && (
-        resource.data.fromUid == request.auth.uid
-        || resource.data.toUid == request.auth.uid
-        || admin()
-      );
-      allow update: if activeUser()
-        && resource.data.status == 'pending'
-        && resource.data.toUid == request.auth.uid
-        && request.resource.data.fromUid == resource.data.fromUid
-        && request.resource.data.toUid == resource.data.toUid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
-        && request.resource.data.status in ['accepted', 'rejected'];
-      allow delete: if admin()
-        || (activeUser() && resource.data.fromUid == request.auth.uid);
-    }
-
-    match /clubs/{clubId} {
-      allow read: if activeUser();
-      allow create: if activeUser()
-        && request.resource.data.ownerUid == request.auth.uid
-        && request.resource.data.memberUids is list
-        && request.resource.data.memberUids.size() == 1
-        && request.resource.data.memberUids.hasAny([request.auth.uid]);
-      allow update: if admin()
-        || (activeUser() && resource.data.ownerUid == request.auth.uid
-          && request.resource.data.ownerUid == resource.data.ownerUid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name']))
-        || (activeUser() && request.resource.data.ownerUid == resource.data.ownerUid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids'])
-          && request.resource.data.memberUids is list
-          && request.resource.data.memberUids.hasAll(resource.data.memberUids)
-          && request.resource.data.memberUids.size() == resource.data.memberUids.size() + 1
-          && request.resource.data.memberUids.hasAny([request.auth.uid]));
-      allow delete: if admin() || (activeUser() && resource.data.ownerUid == request.auth.uid);
-    }
-
-    match /challenges/{challengeId} {
-      allow read: if activeUser();
-      allow create, delete: if admin();
-      allow update: if admin() || (activeUser()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantUids'])
-        && request.resource.data.participantUids is list
-        && request.resource.data.participantUids.hasAll(resource.data.participantUids)
-        && request.resource.data.participantUids.size() == resource.data.participantUids.size() + 1
-        && request.resource.data.participantUids.hasAny([request.auth.uid]));
-    }
-
-    match /challenges/{challengeId}/dailyProgress/{entryId} {
-      // Client-submitted step totals are not trustworthy. Until a trusted,
-      // cost-approved server validator exists, participants may read scores
-      // but cannot create or modify leaderboard progress from the app.
-      allow read: if activeUser()
-        && exists(/databases/$(database)/documents/challenges/$(challengeId))
-        && get(/databases/$(database)/documents/challenges/$(challengeId)).data.participantUids.hasAny([request.auth.uid]);
-      allow write: if admin();
-    }
-
-    match /leaderboards/{boardId} {
-      allow read: if activeUser();
-      allow write: if admin();
-    }
-  }
-})
+          && routeId.matches('^[A-Za-z0-9_-]{1,64}$')
           && request.resource.data.keys().hasOnly(
             ['routeId', 'savedAt', 'distanceKm', 'durationSeconds', 'points', 'updatedAt']
           )
@@ -146,7 +52,6 @@ service cloud.firestore {
           && request.resource.data.updatedAt == request.time;
         allow delete: if activeUser() && request.auth.uid == uid;
       }
-
       match /dailyStats/{day} {
         // Match the exact document shape written by StepFitCloud.saveDailyStats().
         // Users can only write their own date-keyed records; admin cannot be
