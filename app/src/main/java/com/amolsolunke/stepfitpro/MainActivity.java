@@ -634,8 +634,14 @@ public class MainActivity extends Activity {
             content.addView(account, lp(-1, 44));
             Button signOut = new Button(this); signOut.setText("Sign out");
             signOut.setOnClickListener(v -> {
-                auth.signOut();
+                // Clear account-owned profile cache on sign-out so the next
+                // offline session or another account cannot see this user's data.
+                if (auth != null) auth.signOut();
                 if (googleSignInClient != null) googleSignInClient.signOut();
+                pendingPhotoOwnerUid = null;
+                prefs.edit().remove("profile_owner_uid").remove("profile_name")
+                    .remove("profile_age").remove("profile_gender")
+                    .remove("profile_photo_uri").apply();
                 showAuthScreen();
             });
             content.addView(signOut, lp(-1, 50));
