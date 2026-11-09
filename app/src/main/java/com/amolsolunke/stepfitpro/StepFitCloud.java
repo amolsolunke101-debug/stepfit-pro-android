@@ -101,8 +101,6 @@ public final class StepFitCloud {
     }
 
     public static void syncProfile(String name, String age, String gender, Result result) {
-        // Read UID and email from the same FirebaseUser snapshot so a fast
-        // account switch cannot mix one user's document with another's email.
         FirebaseUser requestedUser = FirebaseAuth.getInstance().getCurrentUser();
         final String id = requestedUser == null ? null : requestedUser.getUid();
         final String email = requestedUser == null ? null : requestedUser.getEmail();
@@ -141,8 +139,6 @@ public final class StepFitCloud {
             if (!task.isSuccessful()) throw task.getException();
             return ref.getDownloadUrl();
         }).addOnSuccessListener(url -> {
-            // Do not update the previous account's profile if the user switched
-            // accounts while the upload was in progress.
             if (!id.equals(uid())) {
                 result.done(false, "Account changed. The photo was uploaded to the previous account but its profile was not updated.");
                 return;
@@ -156,8 +152,6 @@ public final class StepFitCloud {
     }
 
     public static void saveDailyStats(long steps, double distanceKm, double calories, Result result) {
-        // Bind this write to the account that initiated it. A later account
-        // switch must never redirect activity data to the newly signed-in user.
         final String id = uid();
         if (id == null) {
             if (result != null) result.done(false, "Sign in to sync activity.");
@@ -184,7 +178,6 @@ public final class StepFitCloud {
             result.done(false, "Enter another user's valid ID."); return;
         }
         String target = targetUid.trim();
-        // Check both directions to avoid duplicate pending requests.
         com.google.android.gms.tasks.Task<com.google.firebase.firestore.QuerySnapshot> outgoing =
             DB.collection("friendRequests").whereEqualTo("fromUid", id)
                 .whereEqualTo("toUid", target).whereEqualTo("status", "pending").get();
@@ -223,7 +216,6 @@ public final class StepFitCloud {
           .addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()));
     }
 
-
     public static void joinClub(String clubId, Result result) {
         String id = uid();
         if (id == null || clubId == null || clubId.trim().isEmpty()) {
@@ -234,7 +226,6 @@ public final class StepFitCloud {
           .addOnSuccessListener(v -> result.done(true, "Joined club."))
           .addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()));
     }
-
 
     public static void createChallenge(String name, String description, long targetSteps, Result result) {
         String id = uid();
@@ -270,20 +261,51 @@ public final class StepFitCloud {
     public static void isAdmin(Result result) {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) { result.done(false, "Sign in first."); return; }
+        final String requestedUid = user.getUid();
         user.getIdToken(true).addOnSuccessListener(token -> {
+            if (!requestedUid.equals(uid())) {
+                result.done(false, "Account changed. Please try again.");
+                return;
+            }
             Object admin = token.getClaims().get("admin");
             result.done(Boolean.TRUE.equals(admin), Boolean.TRUE.equals(admin) ? "Admin access granted." : "Admin access denied.");
         }).addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()));
     }
 
+    /** Block/unblock accounts only after fresh admin verification; an admin cannot block itself. */
     public static void setUserBlocked(String targetUid, boolean blocked, Result result) {
+        final String adminUid = uid();
+        if (adminUid == null) {
+            if (result != null) result.done(false, "Sign in as an authorized admin.");
+            return;
+        }
+        if (targetUid == null || targetUid.trim().isEmpty()) {
+            if (result != null) result.done(false, "Enter a valid user ID.");
+            return;
+        }
+        final String target = targetUid.trim();
+        if (blocked && adminUid.equals(target)) {
+            if (result != null) result.done(false, "Your administrator account cannot be blocked.");
+            return;
+        }
         isAdmin((allowed, message) -> {
-            if (!allowed) { result.done(false, message); return; }
-            DB.collection("users").document(targetUid).set(
+            if (!allowed) {
+                if (result != null) result.done(false, message);
+                return;
+            }
+            if (!adminUid.equals(uid())) {
+                if (result != null) result.done(false, "Account changed. Please try again.");
+                return;
+            }
+            DB.collection("users").document(target).set(
                 java.util.Collections.singletonMap("blocked", blocked),
                 com.google.firebase.firestore.SetOptions.merge())
-              .addOnSuccessListener(v -> result.done(true, blocked ? "User blocked." : "User unblocked."))
-              .addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()));
+              .addOnSuccessListener(v -> {
+                  if (result != null) result.done(true, blocked ? "User blocked." : "User unblocked.");
+              })
+              .addOnFailureListener(e -> {
+                  if (result != null) result.done(false, e.getLocalizedMessage());
+              });
         });
     }
 }
