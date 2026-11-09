@@ -641,7 +641,8 @@ public class MainActivity extends Activity {
             final String adminCheckUid = auth.getCurrentUser().getUid();
             StepFitCloud.isAdmin((allowed, message) -> runOnUiThread(() -> {
                 if (!allowed || isFinishing() || auth == null || auth.getCurrentUser() == null
-                        || !adminCheckUid.equals(auth.getCurrentUser().getUid()) || content == null) return;
+                        || !adminCheckUid.equals(auth.getCurrentUser().getUid()) || content == null
+                        || page != 4 || content.indexOfChild(syncButton) < 0) return;
                 Button adminButton = new Button(this);
                 adminButton.setText("Admin Panel");
                 adminButton.setOnClickListener(v -> {
