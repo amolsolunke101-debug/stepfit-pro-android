@@ -93,7 +93,7 @@ public class RouteTrackingService extends Service {
             }
             return START_NOT_STICKY;
         }
-        startForeground(NOTIFICATION_ID, notification("GPS route is being recorded"));
+        startForeground(NOTIFICATION_ID, notification(routeMessage()));
         if (callback == null) {
             // If a route is already active, a repeated Start tap or service
             // recreation must continue it instead of wiping its recorded path.
@@ -185,6 +185,24 @@ public class RouteTrackingService extends Service {
         }
     }
 
+    private String currentLanguage() {
+        return getSharedPreferences("StepFitData", MODE_PRIVATE).getString("language", "en");
+    }
+
+    private String routeMessage() {
+        String language = currentLanguage();
+        if ("mr".equals(language)) return "GPS मार्गाची नोंद सुरू आहे";
+        if ("hi".equals(language)) return "GPS मार्ग रिकॉर्ड किया जा रहा है";
+        return "GPS route is being recorded";
+    }
+
+    private String channelName() {
+        String language = currentLanguage();
+        if ("mr".equals(language)) return "GPS मार्ग नोंद";
+        if ("hi".equals(language)) return "GPS मार्ग रिकॉर्डिंग";
+        return "GPS route tracking";
+    }
+
     private Notification notification(String message) {
         return new NotificationCompat.Builder(this, CHANNEL)
                 .setSmallIcon(android.R.drawable.ic_menu_mylocation)
@@ -197,7 +215,7 @@ public class RouteTrackingService extends Service {
 
     private void createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(CHANNEL, "GPS route tracking", NotificationManager.IMPORTANCE_LOW);
+            NotificationChannel channel = new NotificationChannel(CHANNEL, channelName(), NotificationManager.IMPORTANCE_LOW);
             getSystemService(NotificationManager.class).createNotificationChannel(channel);
         }
     }
