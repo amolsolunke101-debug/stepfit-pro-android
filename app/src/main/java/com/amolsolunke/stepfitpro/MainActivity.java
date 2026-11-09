@@ -176,11 +176,19 @@ public class MainActivity extends Activity {
                 prefs.getString("profile_gender", ""),
                 (ok, name, age, gender) -> runOnUiThread(() -> {
                     if (!ok || isFinishing()) return;
-                    String oldName = prefs.getString("profile_name", "");
-                    prefs.edit().putString("profile_name", name == null ? "" : name)
-                        .putString("profile_age", age == null ? "" : age)
-                        .putString("profile_gender", gender == null ? "" : gender).apply();
-                    if (!oldName.equals(name == null ? "" : name) && content != null) {
+                    String safeName = name == null ? "" : name;
+                    String safeAge = age == null ? "" : age;
+                    String safeGender = gender == null ? "" : gender;
+                    boolean profileChanged =
+                        !prefs.getString("profile_name", "").equals(safeName)
+                        || !prefs.getString("profile_age", "").equals(safeAge)
+                        || !prefs.getString("profile_gender", "").equals(safeGender);
+                    prefs.edit().putString("profile_name", safeName)
+                        .putString("profile_age", safeAge)
+                        .putString("profile_gender", safeGender).apply();
+                    // Refresh the visible profile summary when any field changes,
+                    // not only when the display name changes.
+                    if (profileChanged && content != null) {
                         buildShell();
                         showPage(page);
                     }
