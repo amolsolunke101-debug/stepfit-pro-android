@@ -626,29 +626,40 @@ public class MainActivity extends Activity {
         content.addView(resetButton, lp(-1, 50));
     }
 
+    private void showLocalProfilePhoto(ImageView target) {
+        String localUri = prefs.getString("profile_photo_uri", "");
+        if (localUri.isEmpty()) return;
+        try { target.setImageURI(android.net.Uri.parse(localUri)); } catch (Exception ignored) {}
+    }
+
     private void loadProfilePhoto(ImageView target) {
         if (auth == null || auth.getCurrentUser() == null) {
-            String localUri = prefs.getString("profile_photo_uri", "");
-            if (!localUri.isEmpty()) {
-                try { target.setImageURI(android.net.Uri.parse(localUri)); } catch (Exception ignored) {}
-            }
+            showLocalProfilePhoto(target);
             return;
         }
         StepFitCloud.loadProfilePhotoUrl(photoUrl -> {
-            if (photoUrl == null || photoUrl.trim().isEmpty() || isFinishing()) return;
-            com.google.firebase.storage.FirebaseStorage.getInstance()
-                .getReferenceFromUrl(photoUrl).getBytes(2 * 1024 * 1024)
-                .addOnSuccessListener(bytes -> runOnUiThread(() -> {
-                    if (isFinishing()) return;
-                    android.graphics.Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-                    if (bitmap != null) target.setImageBitmap(bitmap);
-                }))
-                .addOnFailureListener(error -> {
-                    String localUri = prefs.getString("profile_photo_uri", "");
-                    if (!localUri.isEmpty()) runOnUiThread(() -> {
-                        try { target.setImageURI(android.net.Uri.parse(localUri)); } catch (Exception ignored) {}
-                    });
+            if (isFinishing()) return;
+            if (photoUrl == null || photoUrl.trim().isEmpty()) {
+                runOnUiThread(() -> showLocalProfilePhoto(target));
+                return;
+            }
+            try {
+                com.google.firebase.storage.FirebaseStorage.getInstance()
+                    .getReferenceFromUrl(photoUrl).getBytes(2 * 1024 * 1024)
+                    .addOnSuccessListener(bytes -> runOnUiThread(() -> {
+                        if (isFinishing()) return;
+                        android.graphics.Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                        if (bitmap != null) target.setImageBitmap(bitmap);
+                        else showLocalProfilePhoto(target);
+                    }))
+                    .addOnFailureListener(error -> runOnUiThread(() -> {
+                        if (!isFinishing()) showLocalProfilePhoto(target);
+                    }));
+            } catch (Exception error) {
+                runOnUiThread(() -> {
+                    if (!isFinishing()) showLocalProfilePhoto(target);
                 });
+            }
         });
     }
 
