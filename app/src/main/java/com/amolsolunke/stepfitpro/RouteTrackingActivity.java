@@ -31,6 +31,7 @@ public class RouteTrackingActivity extends Activity {
         return ROUTE_TEXT[lang][index];
     }
     private TextView stats;
+    private CheckBox cloudBackup;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable refresher = new Runnable() {
         @Override public void run() {
@@ -295,6 +296,25 @@ public class RouteTrackingActivity extends Activity {
         }
     }
 
+
+    private void backupLatestRouteIfEnabled() {
+        android.content.SharedPreferences prefs = getSharedPreferences("StepFitData", MODE_PRIVATE);
+        if (!prefs.getBoolean("route_cloud_backup_opt_in", false)) return;
+        try {
+            org.json.JSONArray history = new org.json.JSONArray(prefs.getString("route_history", "[]"));
+            if (history.length() == 0) return;
+            org.json.JSONObject route = history.getJSONObject(0);
+            long savedAt = route.optLong("savedAt", 0);
+            if (savedAt <= 0) return;
+            StepFitCloud.savePrivateRoute("r" + savedAt, savedAt,
+                    route.optDouble("distanceKm", 0), route.optLong("durationSeconds", 0),
+                    route.optString("points", ""),
+                    (ok, message) -> Toast.makeText(this,
+                            ok ? message : ("Cloud backup failed: " + message),
+                            Toast.LENGTH_LONG).show());
+        } catch (org.json.JSONException ignored) { }
+    }
+
     private void stop() {
         android.content.SharedPreferences prefs = getSharedPreferences("StepFitData", MODE_PRIVATE);
         if (!prefs.getBoolean("route_tracking", false)) {
@@ -306,7 +326,7 @@ public class RouteTrackingActivity extends Activity {
         try {
             startService(service);
             handler.removeCallbacks(refresher);
-            handler.postDelayed(this::refresh, 500);
+            handler.postDelayed(() -> { refresh(); backupLatestRouteIfEnabled(); }, 1200);
         } catch (Exception e) {
             Toast.makeText(this, tr(24), Toast.LENGTH_LONG).show();
         }
@@ -352,6 +372,20 @@ public class RouteTrackingActivity extends Activity {
         end.setText(tr(18));
         end.setOnClickListener(v -> stop());
         root.addView(end);
+
+        cloudBackup = new CheckBox(this);
+        cloudBackup.setText("mr".equals(language)
+                ? "माझ्या संमतीने GPS मार्गांचा खाजगी Cloud Backup सुरू करा"
+                : ("hi".equals(language)
+                    ? "मेरी सहमति से GPS मार्गों का निजी Cloud Backup चालू करें"
+                    : "Enable private GPS route cloud backup (my consent)"));
+        cloudBackup.setTextColor(Color.WHITE);
+        cloudBackup.setChecked(getSharedPreferences("StepFitData", MODE_PRIVATE)
+                .getBoolean("route_cloud_backup_opt_in", false));
+        cloudBackup.setOnCheckedChangeListener((button, checked) ->
+                getSharedPreferences("StepFitData", MODE_PRIVATE).edit()
+                        .putBoolean("route_cloud_backup_opt_in", checked).apply());
+        root.addView(cloudBackup);
         Button history = new Button(this);
         history.setText(tr(19));
         history.setOnClickListener(v -> showRouteHistory());
