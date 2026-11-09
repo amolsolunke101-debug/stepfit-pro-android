@@ -68,7 +68,7 @@ public class MainActivity extends Activity {
         "Highest day","About StepFit PRO","Offline step counter",
         "Choose language","Choose theme","Settings saved",
         "Enter goal (0 = no goal)","Sensor permission needed",
-        "Permission required","No goal set","steps","Refresh","Daily steps","My Profile","Profile","Not set","GPS Route Tracking","Friends • Clubs • Challenges • Admin","Sync Profile and Activity","Signed in: ","Sign out"
+        "Permission required","No goal set","steps","Refresh","Daily steps","My Profile","Profile","Not set","GPS Route Tracking","Friends • Clubs • Challenges • Admin","Sync Profile and Activity","Signed in: ","Sign out","Full name","Age (optional)","Gender (optional)","Choose photo","Reset today's step count"
       },
       {
         "मुख्यपृष्ठ","प्रगती","इतिहास","आलेख","सेटिंग्ज","माहिती",
@@ -82,7 +82,7 @@ public class MainActivity extends Activity {
         "StepFit PRO बद्दल","ऑफलाइन स्टेप काउंटर",
         "भाषा निवडा","थीम निवडा","सेटिंग्ज जतन झाल्या",
         "लक्ष्य भरा (० = लक्ष्य नाही)","सेन्सर परवानगी आवश्यक",
-        "परवानगी आवश्यक","लक्ष्य निश्चित केलेले नाही","पावले","रीफ्रेश","दैनिक पावले","माझे प्रोफाइल","प्रोफाइल","सेट केलेले नाही","GPS मार्ग ट्रॅकिंग","मित्र • क्लब • आव्हाने • प्रशासक","प्रोफाइल व हालचाली समक्रमित करा","लॉगिन: ","बाहेर पडा"
+        "परवानगी आवश्यक","लक्ष्य निश्चित केलेले नाही","पावले","रीफ्रेश","दैनिक पावले","माझे प्रोफाइल","प्रोफाइल","सेट केलेले नाही","GPS मार्ग ट्रॅकिंग","मित्र • क्लब • आव्हाने • प्रशासक","प्रोफाइल व हालचाली समक्रमित करा","लॉगिन: ","बाहेर पडा","पूर्ण नाव","वय (ऐच्छिक)","लिंग (ऐच्छिक)","फोटो निवडा","आजची पावले रीसेट करायची?"
       },
       {
         "होम","प्रगति","इतिहास","चार्ट","सेटिंग्स","जानकारी",
@@ -96,7 +96,7 @@ public class MainActivity extends Activity {
         "StepFit PRO के बारे में","ऑफलाइन स्टेप काउंटर",
         "भाषा चुनें","थीम चुनें","सेटिंग्स सहेजी गईं",
         "लक्ष्य दर्ज करें (0 = कोई लक्ष्य नहीं)","सेंसर की अनुमति आवश्यक",
-        "अनुमति आवश्यक","लक्ष्य निर्धारित नहीं है","कदम","रीफ्रेश","दैनिक कदम","मेरी प्रोफ़ाइल","प्रोफ़ाइल","सेट नहीं है","GPS मार्ग ट्रैकिंग","मित्र • क्लब • चुनौतियाँ • एडमिन","प्रोफ़ाइल और गतिविधि सिंक करें","लॉगिन: ","साइन आउट"
+        "अनुमति आवश्यक","लक्ष्य निर्धारित नहीं है","कदम","रीफ्रेश","दैनिक कदम","मेरी प्रोफ़ाइल","प्रोफ़ाइल","सेट नहीं है","GPS मार्ग ट्रैकिंग","मित्र • क्लब • चुनौतियाँ • एडमिन","प्रोफ़ाइल और गतिविधि सिंक करें","लॉगिन: ","साइन आउट","पूरा नाम","आयु (वैकल्पिक)","लिंग (वैकल्पिक)","फ़ोटो चुनें","आज के कदम रीसेट करें?"
       },
       {
         "Inicio","Progreso","Historial","Gráficos","Ajustes",
@@ -110,7 +110,7 @@ public class MainActivity extends Activity {
         "Acerca de StepFit PRO","Contador sin conexión",
         "Elegir idioma","Elegir tema","Ajustes guardados",
         "Meta (0 = sin meta)","Permiso del sensor necesario",
-        "Permiso necesario","Sin objetivo","pasos","Actualizar","Pasos diarios","Mi perfil","Perfil","No definido","Seguimiento GPS","Amigos • Clubes • Retos • Admin","Sincronizar perfil y actividad","Sesión: ","Cerrar sesión"
+        "Permiso necesario","Sin objetivo","pasos","Actualizar","Pasos diarios","Mi perfil","Perfil","No definido","Seguimiento GPS","Amigos • Clubes • Retos • Admin","Sincronizar perfil y actividad","Sesión: ","Cerrar sesión","Nombre completo","Edad (opcional)","Género (opcional)","Elegir foto","¿Restablecer los pasos de hoy?"
       }
     };
 
@@ -658,7 +658,7 @@ public class MainActivity extends Activity {
         }
         Button resetButton = new Button(this); resetButton.setText(t(19));
         resetButton.setOnClickListener(v -> new AlertDialog.Builder(this)
-            .setTitle(t(19)).setMessage("Reset today's step count?")
+            .setTitle(t(19)).setMessage(t(55))
             .setNegativeButton(t(14), null)
             .setPositiveButton("Reset", (d, w) -> {
                 prefs.edit().putLong("today_steps", 0L).putLong("base_steps", -1L)
@@ -715,13 +715,13 @@ public class MainActivity extends Activity {
 
     private void editProfile() {
         LinearLayout form = column();
-        EditText name = new EditText(this); name.setSingleLine(true); name.setHint("Full name");
+        EditText name = new EditText(this); name.setSingleLine(true); name.setHint(t(51));
         name.setText(prefs.getString("profile_name", "")); form.addView(name, lp(-1, 52));
-        EditText age = new EditText(this); age.setSingleLine(true); age.setInputType(2); age.setHint("Age (optional)");
+        EditText age = new EditText(this); age.setSingleLine(true); age.setInputType(2); age.setHint(t(52));
         age.setText(prefs.getString("profile_age", "")); form.addView(age, lp(-1, 52));
-        EditText gender = new EditText(this); gender.setSingleLine(true); gender.setHint("Gender (optional)");
+        EditText gender = new EditText(this); gender.setSingleLine(true); gender.setHint(t(53));
         gender.setText(prefs.getString("profile_gender", "")); form.addView(gender, lp(-1, 52));
-        new AlertDialog.Builder(this).setTitle("My Profile").setView(form)
+        new AlertDialog.Builder(this).setTitle(t(43)).setView(form)
             .setNegativeButton(t(14), null)
             .setPositiveButton(t(13), (d, w) -> {
                 prefs.edit().putString("profile_name", name.getText().toString().trim())
@@ -733,7 +733,7 @@ public class MainActivity extends Activity {
                             Toast.makeText(this, message, Toast.LENGTH_LONG).show()));
                 }
                 buildShell(); showPage(4);
-            }).setNeutralButton("Choose photo", (d, w) -> {
+            }).setNeutralButton(t(54), (d, w) -> {
                 pendingPhotoOwnerUid = auth == null || auth.getCurrentUser() == null
                     ? null : auth.getCurrentUser().getUid();
                 Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
