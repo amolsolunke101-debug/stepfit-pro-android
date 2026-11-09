@@ -36,6 +36,7 @@
         </activity>
 
         <activity android:name=".CommunityActivity" android:exported="false" />
+        <activity android:name=".AdminActivity" android:exported="false" />
         <activity android:name=".RouteTrackingActivity" android:exported="false" />
 
         <service
