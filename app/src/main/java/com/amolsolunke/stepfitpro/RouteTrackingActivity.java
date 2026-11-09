@@ -30,16 +30,16 @@ public class RouteTrackingActivity extends Activity {
         boolean mr = "mr".equals(language);
         boolean hi = "hi".equals(language);
         switch (key) {
-            case "signIn": return mr ? "खाजगी Cloud मार्ग पाहण्यासाठी साइन इन करा." : hi ? "निजी Cloud मार्ग देखने के लिए साइन इन करें।" : cloudTr("signIn");
-            case "loading": return mr ? "खाजगी Cloud मार्ग लोड होत आहेत…" : hi ? "निजी Cloud मार्ग लोड हो रहे हैं…" : cloudTr("loading");
+            case "signIn": return mr ? "खाजगी Cloud मार्ग पाहण्यासाठी साइन इन करा." : hi ? "निजी Cloud मार्ग देखने के लिए साइन इन करें।" : "Sign in to view private cloud routes.";
+            case "loading": return mr ? "खाजगी Cloud मार्ग लोड होत आहेत…" : hi ? "निजी Cloud मार्ग लोड हो रहे हैं…" : "Loading private cloud routes…";
             case "loadError": return mr ? "Cloud इतिहास लोड झाला नाही: " : hi ? "Cloud इतिहास लोड नहीं हुआ: " : "Cloud history: ";
             case "title": return mr ? "खाजगी Cloud मार्ग इतिहास" : hi ? "निजी Cloud मार्ग इतिहास" : "Private Cloud Route History";
-            case "empty": return mr ? "Cloud मध्ये मार्ग उपलब्ध नाहीत. पुढील GPS मार्ग जतन करण्यापूर्वी खाजगी Cloud Backup सुरू करा." : hi ? "Cloud में कोई मार्ग नहीं है। अगला GPS मार्ग सेव करने से पहले निजी Cloud Backup चालू करें।" : cloudTr("empty");
-            case "details": return mr ? "Cloud मार्गाचा तपशील" : hi ? "Cloud मार्ग का विवरण" : cloudTr("details");
-            case "private": return mr ? "हा मार्ग फक्त या खात्यासाठी खाजगी आहे." : hi ? "यह मार्ग केवल इस खाते के लिए निजी है।" : cloudTr("private");
-            case "delete": return mr ? "Cloud मधून हटवा" : hi ? "Cloud से हटाएँ" : cloudTr("delete");
-            case "confirmTitle": return mr ? "Cloud मार्ग हटवायचा?" : hi ? "Cloud मार्ग हटाएँ?" : cloudTr("confirmTitle");
-            case "confirm": return mr ? "हा मार्ग तुमच्या खाजगी Cloud इतिहासातून कायमचा हटवला जाईल. मोबाईलमधील स्थानिक इतिहास तसाच राहील." : hi ? "यह मार्ग आपके निजी Cloud इतिहास से स्थायी रूप से हट जाएगा। फोन का स्थानीय इतिहास बना रहेगा।" : cloudTr("confirm");
+            case "empty": return mr ? "Cloud मध्ये मार्ग उपलब्ध नाहीत. पुढील GPS मार्ग जतन करण्यापूर्वी खाजगी Cloud Backup सुरू करा." : hi ? "Cloud में कोई मार्ग नहीं है। अगला GPS मार्ग सेव करने से पहले निजी Cloud Backup चालू करें।" : "No cloud routes found. Turn on private cloud backup before saving a future GPS route.";
+            case "details": return mr ? "Cloud मार्गाचा तपशील" : hi ? "Cloud मार्ग का विवरण" : "Cloud route details";
+            case "private": return mr ? "हा मार्ग फक्त या खात्यासाठी खाजगी आहे." : hi ? "यह मार्ग केवल इस खाते के लिए निजी है।" : "This route is private to this account.";
+            case "delete": return mr ? "Cloud मधून हटवा" : hi ? "Cloud से हटाएँ" : "Delete from Cloud";
+            case "confirmTitle": return mr ? "Cloud मार्ग हटवायचा?" : hi ? "Cloud मार्ग हटाएँ?" : "Delete cloud route?";
+            case "confirm": return mr ? "हा मार्ग तुमच्या खाजगी Cloud इतिहासातून कायमचा हटवला जाईल. मोबाईलमधील स्थानिक इतिहास तसाच राहील." : hi ? "यह मार्ग आपके निजी Cloud इतिहास से स्थायी रूप से हट जाएगा। फोन का स्थानीय इतिहास बना रहेगा।" : "This permanently deletes this route from your private cloud history. Your device local route history is unchanged.";
             default: return key;
         }
     }
@@ -121,10 +121,10 @@ public class RouteTrackingActivity extends Activity {
 
     private void showCloudRouteHistory() {
         if (StepFitCloud.uid() == null) {
-            Toast.makeText(this, "Sign in to view private cloud routes.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, cloudTr("signIn"), Toast.LENGTH_LONG).show();
             return;
         }
-        Toast.makeText(this, "Loading private cloud routes…", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, cloudTr("loading"), Toast.LENGTH_SHORT).show();
         StepFitCloud.loadPrivateRoutes((ok, routes, message) -> runOnUiThread(() -> {
             if (isFinishing()) return;
             if (!ok) {
@@ -134,7 +134,7 @@ public class RouteTrackingActivity extends Activity {
             if (routes == null || routes.isEmpty()) {
                 new AlertDialog.Builder(this)
                     .setTitle(cloudTr("title"))
-                    .setMessage("No cloud routes found. Turn on private cloud backup before saving a future GPS route.")
+                    .setMessage(cloudTr("empty"))
                     .setPositiveButton(tr(7), null).show();
                 return;
             }
@@ -147,7 +147,7 @@ public class RouteTrackingActivity extends Activity {
                 labels[i] = fmt.format(new java.util.Date(savedAt)) + " • "
                         + String.format(Locale.getDefault(), "%.2f km", km);
             }
-            new AlertDialog.Builder(this).setTitle("Private Cloud History")
+            new AlertDialog.Builder(this).setTitle(cloudTr("title"))
                 .setItems(labels, (dialog, which) -> {
                     com.google.firebase.firestore.DocumentSnapshot selected = routes.get(which);
                     String routeId = selected.getId();
@@ -157,13 +157,13 @@ public class RouteTrackingActivity extends Activity {
                     String summary = fmt.format(new java.util.Date(savedAt)) + "\\n"
                             + String.format(Locale.getDefault(), "%.2f km • %02d:%02d:%02d",
                                 km, seconds/3600, (seconds%3600)/60, seconds%60)
-                            + "\\nPrivate to this account.";
-                    new AlertDialog.Builder(this).setTitle("Cloud route details").setMessage(summary)
+                            + "\\n" + cloudTr("private");
+                    new AlertDialog.Builder(this).setTitle(cloudTr("details")).setMessage(summary)
                         .setNegativeButton(tr(10), null)
-                        .setPositiveButton("Delete from Cloud", (d, w) ->
+                        .setPositiveButton(cloudTr("delete"), (d, w) ->
                             new AlertDialog.Builder(this)
-                                .setTitle("Delete cloud route?")
-                                .setMessage("This permanently deletes this route from your private cloud history. Your device's local route history is unchanged.")
+                                .setTitle(cloudTr("confirmTitle"))
+                                .setMessage(cloudTr("confirm"))
                                 .setNegativeButton(tr(10), null)
                                 .setPositiveButton(tr(29), (confirm, choice) ->
                                     StepFitCloud.deletePrivateRoute(routeId, (deleted, deleteMessage) ->
