@@ -68,7 +68,7 @@ public class MainActivity extends Activity {
         "Highest day","About StepFit PRO","Offline step counter",
         "Choose language","Choose theme","Settings saved",
         "Enter goal (0 = no goal)","Sensor permission needed",
-        "Permission required","No goal set","steps"
+        "Permission required","No goal set","steps","Refresh","Daily steps"
       },
       {
         "मुख्यपृष्ठ","प्रगती","इतिहास","आलेख","सेटिंग्ज","माहिती",
@@ -82,7 +82,7 @@ public class MainActivity extends Activity {
         "StepFit PRO बद्दल","ऑफलाइन स्टेप काउंटर",
         "भाषा निवडा","थीम निवडा","सेटिंग्ज जतन झाल्या",
         "लक्ष्य भरा (० = लक्ष्य नाही)","सेन्सर परवानगी आवश्यक",
-        "परवानगी आवश्यक","लक्ष्य निश्चित केलेले नाही","पावले"
+        "परवानगी आवश्यक","लक्ष्य निश्चित केलेले नाही","पावले","रीफ्रेश","दैनिक पावले"
       },
       {
         "होम","प्रगति","इतिहास","चार्ट","सेटिंग्स","जानकारी",
@@ -96,7 +96,7 @@ public class MainActivity extends Activity {
         "StepFit PRO के बारे में","ऑफलाइन स्टेप काउंटर",
         "भाषा चुनें","थीम चुनें","सेटिंग्स सहेजी गईं",
         "लक्ष्य दर्ज करें (0 = कोई लक्ष्य नहीं)","सेंसर की अनुमति आवश्यक",
-        "अनुमति आवश्यक","लक्ष्य निर्धारित नहीं है","कदम"
+        "अनुमति आवश्यक","लक्ष्य निर्धारित नहीं है","कदम","रीफ्रेश","दैनिक कदम"
       },
       {
         "Inicio","Progreso","Historial","Gráficos","Ajustes",
@@ -110,7 +110,7 @@ public class MainActivity extends Activity {
         "Acerca de StepFit PRO","Contador sin conexión",
         "Elegir idioma","Elegir tema","Ajustes guardados",
         "Meta (0 = sin meta)","Permiso del sensor necesario",
-        "Permiso necesario","Sin objetivo","pasos"
+        "Permiso necesario","Sin objetivo","pasos","Actualizar","Pasos diarios"
       }
     };
 
@@ -497,7 +497,7 @@ public class MainActivity extends Activity {
         }
         content.addView(text(status, 14, sensorAvailable ? accent : Color.YELLOW, false));
 
-        Button refresh = new Button(this); refresh.setText("Refresh");
+        Button refresh = new Button(this); refresh.setText(t(41));
         refresh.setOnClickListener(v -> showPage(0)); content.addView(refresh, lp(-1, 48));
     }
 
@@ -523,7 +523,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams chartParams = lp(-1, 190);
         chartParams.setMargins(0, dp(8), 0, dp(12));
         content.addView(chart, chartParams);
-        TextView note = text("Daily steps • Last 7 days", 13, Color.LTGRAY, false);
+        TextView note = text(t(42) + " • " + t(15), 13, Color.LTGRAY, false);
         content.addView(note, lp(-1, 34));
     }
 
