@@ -39,6 +39,13 @@ public class RouteTrackingService extends Service {
         String action = intent == null ? null : intent.getAction();
         android.content.SharedPreferences routePrefs = getSharedPreferences("StepFitData", MODE_PRIVATE);
         if (ACTION_STOP.equals(action)) {
+            // Ignore a Stop tap when no route is active. Without this guard,
+            // an idle stop could create a misleading empty route-history entry.
+            if (startedAt <= 0 && !routePrefs.getBoolean("route_tracking", false)) {
+                stopForeground(true);
+                stopSelf();
+                return START_NOT_STICKY;
+            }
             // ACTION_STOP can create a fresh service instance after Android
             // has killed the recording service. Restore the persisted route
             // before saving so a stop tap cannot overwrite it with an empty route.
