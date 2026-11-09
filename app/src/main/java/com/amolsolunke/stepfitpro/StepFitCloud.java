@@ -27,6 +27,10 @@ public final class StepFitCloud {
         return user == null ? null : user.getUid();
     }
 
+    private static boolean isCurrentUser(String expectedUid) {
+        return expectedUid != null && expectedUid.equals(uid());
+    }
+
     public interface ProfileResult { void done(boolean ok, String name, String age, String gender); }
 
     /** Load the signed-in user's cloud profile, creating it from local values only when absent. */
@@ -40,6 +44,11 @@ public final class StepFitCloud {
         final String requestedEmail = requestedUser == null ? null : requestedUser.getEmail();
         DB.collection("users").document(id).get()
           .addOnSuccessListener(doc -> {
+              // Do not backfill or create a profile after the device account changes.
+              if (!isCurrentUser(id)) {
+                  result.done(false, localName, localAge, localGender);
+                  return;
+              }
               if (doc.exists()) {
                   String name = doc.getString("name");
                   String age = doc.getString("age");
@@ -70,14 +79,22 @@ public final class StepFitCloud {
                   final String resolvedGender = gender == null ? (localGender == null ? "" : localGender) : gender;
                   if (!missingFields.isEmpty()) {
                       missingFields.put("updatedAt", FieldValue.serverTimestamp());
+                      if (!isCurrentUser(id)) {
+                          result.done(false, localName, localAge, localGender);
+                          return;
+                      }
                       DB.collection("users").document(id)
                           .set(missingFields, com.google.firebase.firestore.SetOptions.merge())
-                          .addOnSuccessListener(v -> result.done(true, resolvedName, resolvedAge, resolvedGender))
+                          .addOnSuccessListener(v -> result.done(isCurrentUser(id), resolvedName, resolvedAge, resolvedGender))
                           .addOnFailureListener(e -> result.done(false, localName, localAge, localGender));
                   } else {
-                      result.done(true, resolvedName, resolvedAge, resolvedGender);
+                      result.done(isCurrentUser(id), resolvedName, resolvedAge, resolvedGender);
                   }
               } else {
+                  if (!isCurrentUser(id)) {
+                      result.done(false, localName, localAge, localGender);
+                      return;
+                  }
                   // Write the profile to the UID captured before the read,
                   // rather than resolving FirebaseAuth's current UID again.
                   Map<String,Object> data = new HashMap<>();
@@ -89,7 +106,7 @@ public final class StepFitCloud {
                   data.put("updatedAt", FieldValue.serverTimestamp());
                   DB.collection("users").document(id)
                       .set(data, com.google.firebase.firestore.SetOptions.merge())
-                      .addOnSuccessListener(v -> result.done(true,
+                      .addOnSuccessListener(v -> result.done(isCurrentUser(id),
                           localName == null ? "" : localName,
                           localAge == null ? "" : localAge,
                           localGender == null ? "" : localGender))
@@ -116,7 +133,10 @@ public final class StepFitCloud {
         data.put("gender", gender == null ? "" : gender);
         data.put("updatedAt", FieldValue.serverTimestamp());
         DB.collection("users").document(id).set(data, com.google.firebase.firestore.SetOptions.merge())
-          .addOnSuccessListener(v -> { if (result != null) result.done(true, "Profile synced to the account that started the sync."); })
+          .addOnSuccessListener(v -> {
+              if (result != null) result.done(isCurrentUser(id),
+                  isCurrentUser(id) ? "Profile synced." : "Account changed. Sync result was not applied to the current account.");
+          })
           .addOnFailureListener(e -> { if (result != null) result.done(false, e.getLocalizedMessage()); });
     }
 
