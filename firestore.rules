@@ -32,10 +32,8 @@ service cloud.firestore {
         );
       allow update, delete: if admin();
 
-
       match /routes/{routeId} {
-        // Precise GPS trails are private to the owning account. Upload is
-        // available only when the app's user-controlled backup opt-in is on.
+        // Precise GPS trails remain private to the owning account.
         allow read: if activeUser() && request.auth.uid == uid;
         allow create, update: if activeUser()
           && request.auth.uid == uid
