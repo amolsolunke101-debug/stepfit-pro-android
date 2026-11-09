@@ -71,8 +71,8 @@ public class AdminActivity extends Activity {
                     boolean blocked = Boolean.TRUE.equals(doc.getBoolean("blocked"));
                     TextView details = new TextView(this);
                     details.setText((name == null || name.trim().isEmpty() ? "Unnamed user" : name)
-                        + "\\n" + (email == null ? "No email" : email)
-                        + "\\nUID: " + uid + "\\nStatus: " + (blocked ? "Blocked" : "Active"));
+                        + "\n" + (email == null ? "No email" : email)
+                        + "\nUID: " + uid + "\nStatus: " + (blocked ? "Blocked" : "Active"));
                     details.setTextSize(14);
                     list.addView(details);
                     if (!uid.equals(ownerUid)) {
