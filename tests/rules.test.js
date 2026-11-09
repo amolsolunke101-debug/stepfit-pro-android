@@ -1,5 +1,5 @@
 const { initializeTestEnvironment, assertSucceeds, assertFails } = require("@firebase/rules-unit-testing");
-const { doc, setDoc, getDoc, serverTimestamp, collection, addDoc, updateDoc } = require("firebase/firestore");
+const { doc, setDoc, getDoc, serverTimestamp, collection, addDoc, updateDoc, deleteDoc } = require("firebase/firestore");
 const { ref, uploadBytes, getDownloadURL } = require("firebase/storage");
 
 const PROJECT_ID = "step-fit-pro-8e0ce";
@@ -50,6 +50,43 @@ describe("StepFit PRO Firestore rules", () => {
       date: "2026-11-09", steps: -1, distanceKm: 0,
       calories: 0, updatedAt: serverTimestamp()
     }));
+  });
+
+  it("allows private GPS routes only for their owner and validates route data", async () => {
+    const alice = env.authenticatedContext("alice").firestore();
+    const bob = env.authenticatedContext("bob").firestore();
+    const route = {
+      routeId: "r1731060000000", savedAt: 1731060000000,
+      distanceKm: 2.5, durationSeconds: 1800,
+      points: "18.5204,73.8567,1731060000000;18.5210,73.8570,1731060001000",
+      updatedAt: serverTimestamp()
+    };
+    await assertSucceeds(setDoc(doc(alice, "users/alice/routes/r1731060000000"), route));
+    await assertSucceeds(getDoc(doc(alice, "users/alice/routes/r1731060000000")));
+    await assertFails(getDoc(doc(bob, "users/alice/routes/r1731060000000")));
+    await assertFails(setDoc(doc(alice, "users/alice/routes/bad"), {
+      ...route, routeId: "not-the-document-id"
+    }));
+    await assertFails(setDoc(doc(alice, "users/alice/routes/negative"), {
+      ...route, routeId: "negative", distanceKm: -1
+    }));
+    await assertFails(setDoc(doc(alice, "users/alice/routes/extra"), {
+      ...route, routeId: "extra", sharedWith: ["bob"]
+    }));
+  });
+
+  it("allows only the route owner to delete a private GPS route", async () => {
+    await env.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(), "users/alice/routes/route1"), {
+        routeId: "route1", savedAt: 1731060000000, distanceKm: 1.2,
+        durationSeconds: 600, points: "18.5204,73.8567;18.5210,73.8570",
+        updatedAt: new Date()
+      });
+    });
+    const alice = env.authenticatedContext("alice").firestore();
+    const bob = env.authenticatedContext("bob").firestore();
+    await assertFails(deleteDoc(doc(bob, "users/alice/routes/route1")));
+    await assertSucceeds(deleteDoc(doc(alice, "users/alice/routes/route1")));
   });
 
   it("allows a friend request when the recipient profile has no blocked field", async () => {
