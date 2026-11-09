@@ -14,7 +14,9 @@ service firebase.storage {
     }
 
     match /profilePhotos/{uid}/{fileName} {
-      allow read: if activeUser();
+      // Profile photos are private to their owner and authorized admins.
+      allow read: if activeUser()
+        && (request.auth.uid == uid || request.auth.token.get('admin', false) == true);
       allow write: if activeUser()
         && request.auth.uid == uid
         && request.resource.size < 5 * 1024 * 1024
