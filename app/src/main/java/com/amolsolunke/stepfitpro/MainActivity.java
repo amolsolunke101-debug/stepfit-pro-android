@@ -634,6 +634,28 @@ public class MainActivity extends Activity {
                 getSteps()*prefs.getFloat("weight",70f)*0.0004, (ok,message) -> runOnUiThread(() -> Toast.makeText(this,message,Toast.LENGTH_LONG).show()));
         });
         content.addView(syncButton, lp(-1, 50));
+
+        // Reveal the admin entry only after Firebase confirms the protected
+        // custom claim. The AdminActivity repeats this check on every launch.
+        if (auth != null && auth.getCurrentUser() != null) {
+            final String adminCheckUid = auth.getCurrentUser().getUid();
+            StepFitCloud.isAdmin((allowed, message) -> runOnUiThread(() -> {
+                if (!allowed || isFinishing() || auth == null || auth.getCurrentUser() == null
+                        || !adminCheckUid.equals(auth.getCurrentUser().getUid()) || content == null) return;
+                Button adminButton = new Button(this);
+                adminButton.setText("Admin Panel");
+                adminButton.setOnClickListener(v -> {
+                    if (auth != null && auth.getCurrentUser() != null
+                            && adminCheckUid.equals(auth.getCurrentUser().getUid())) {
+                        startActivity(new Intent(this, AdminActivity.class));
+                    } else {
+                        Toast.makeText(this, "Please sign in again.", Toast.LENGTH_LONG).show();
+                    }
+                });
+                content.addView(adminButton, Math.max(0, content.indexOfChild(syncButton) + 1),
+                    lp(-1, 50));
+            }));
+        }
         if (auth != null && auth.getCurrentUser() != null) {
             TextView account = text(t(49) + auth.getCurrentUser().getEmail(), 13, Color.WHITE, false);
             content.addView(account, lp(-1, 44));
