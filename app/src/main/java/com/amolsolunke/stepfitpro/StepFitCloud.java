@@ -151,6 +151,55 @@ public final class StepFitCloud {
         }).addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()));
     }
 
+
+    /**
+     * Optional, user-consented route backup. The caller must check the local
+     * opt-in preference before invoking this method. Precise GPS data is private
+     * under the matching Firestore rules and is never shared with friends.
+     */
+    public static void savePrivateRoute(String routeId, long savedAt, double distanceKm,
+                                        long durationSeconds, String points, Result result) {
+        final String id = uid();
+        if (id == null || routeId == null || !routeId.matches("[A-Za-z0-9_-]{1,64}")
+                || points == null || points.length() > 180000
+                || !Double.isFinite(distanceKm) || distanceKm < 0
+                || durationSeconds < 0) {
+            if (result != null) result.done(false, "Invalid route data or sign-in required.");
+            return;
+        }
+        int count = points.isEmpty() ? 0 : points.split(";", -1).length;
+        if (count < 2 || count > 3000) {
+            if (result != null) result.done(false, "Route must contain 2 to 3000 points.");
+            return;
+        }
+        Map<String,Object> data = new HashMap<>();
+        data.put("routeId", routeId);
+        data.put("savedAt", savedAt);
+        data.put("distanceKm", distanceKm);
+        data.put("durationSeconds", durationSeconds);
+        data.put("points", points);
+        data.put("updatedAt", FieldValue.serverTimestamp());
+        DB.collection("users").document(id).collection("routes").document(routeId).set(data)
+          .addOnSuccessListener(v -> {
+              if (result != null) result.done(true, "Private route backup saved.");
+          })
+          .addOnFailureListener(e -> {
+              if (result != null) result.done(false, e.getLocalizedMessage());
+          });
+    }
+
+    /** Delete one private cloud route belonging to the currently signed-in user. */
+    public static void deletePrivateRoute(String routeId, Result result) {
+        final String id = uid();
+        if (id == null || routeId == null || !routeId.matches("[A-Za-z0-9_-]{1,64}")) {
+            if (result != null) result.done(false, "Sign in and choose a valid route.");
+            return;
+        }
+        DB.collection("users").document(id).collection("routes").document(routeId).delete()
+          .addOnSuccessListener(v -> { if (result != null) result.done(true, "Cloud route deleted."); })
+          .addOnFailureListener(e -> { if (result != null) result.done(false, e.getLocalizedMessage()); });
+    }
+
     public static void saveDailyStats(long steps, double distanceKm, double calories, Result result) {
         final String id = uid();
         if (id == null) {
