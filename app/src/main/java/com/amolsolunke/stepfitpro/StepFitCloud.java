@@ -39,6 +39,33 @@ public final class StepFitCloud {
                   String name = doc.getString("name");
                   String age = doc.getString("age");
                   String gender = doc.getString("gender");
+
+                  // Backfill only missing fields; never replace cloud values
+                  // with potentially stale values from this device.
+                  Map<String,Object> missingFields = new HashMap<>();
+                  if ((name == null || name.trim().isEmpty()) && localName != null && !localName.trim().isEmpty()) {
+                      missingFields.put("name", localName.trim());
+                      name = localName.trim();
+                  }
+                  if ((age == null || age.trim().isEmpty()) && localAge != null && !localAge.trim().isEmpty()) {
+                      missingFields.put("age", localAge.trim());
+                      age = localAge.trim();
+                  }
+                  if ((gender == null || gender.trim().isEmpty()) && localGender != null && !localGender.trim().isEmpty()) {
+                      missingFields.put("gender", localGender.trim());
+                      gender = localGender.trim();
+                  }
+                  FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+                  String cloudEmail = doc.getString("email");
+                  if ((cloudEmail == null || cloudEmail.trim().isEmpty())
+                          && currentUser != null && currentUser.getEmail() != null) {
+                      missingFields.put("email", currentUser.getEmail());
+                  }
+                  if (!missingFields.isEmpty()) {
+                      missingFields.put("updatedAt", FieldValue.serverTimestamp());
+                      DB.collection("users").document(id)
+                          .set(missingFields, com.google.firebase.firestore.SetOptions.merge());
+                  }
                   result.done(true,
                       name == null ? (localName == null ? "" : localName) : name,
                       age == null ? (localAge == null ? "" : localAge) : age,
