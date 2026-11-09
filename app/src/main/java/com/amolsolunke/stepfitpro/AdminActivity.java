@@ -15,7 +15,6 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
-import java.util.Locale;
 
 public class AdminActivity extends Activity {
     private static final int PAGE_SIZE = 25;
@@ -47,7 +46,7 @@ public class AdminActivity extends Activity {
 
         searchInput = new EditText(this);
         searchInput.setSingleLine(true);
-        searchInput.setHint("Search users by name");
+        searchInput.setHint("Search users by name (case-sensitive)");
         root.addView(searchInput);
         Button searchButton = new Button(this);
         searchButton.setText("Search");
@@ -105,24 +104,23 @@ public class AdminActivity extends Activity {
 
         Query query;
         if (searching) {
-            String prefix = activeSearch.toLowerCase(Locale.ROOT);
             query = FirebaseFirestore.getInstance().collection("users")
                 .orderBy("name")
-                .whereGreaterThanOrEqualTo("name", prefix)
-                .whereLessThanOrEqualTo("name", prefix + "\uf8ff")
+                .whereGreaterThanOrEqualTo("name", activeSearch)
+                .whereLessThanOrEqualTo("name", activeSearch + "\uf8ff")
                 .limit(PAGE_SIZE);
         } else {
             query = FirebaseFirestore.getInstance().collection("users")
                 .orderBy(com.google.firebase.firestore.FieldPath.documentId())
                 .limit(PAGE_SIZE);
-            if (lastVisible != null) query = query.startAfter(lastVisible);
         }
+        if (lastVisible != null) query = query.startAfter(lastVisible);
 
         query.get().addOnSuccessListener(snapshot -> {
             loading = false;
             if (isFinishing() || !sameAccount()) { deny(); return; }
             if (!snapshot.isEmpty()) lastVisible = snapshot.getDocuments().get(snapshot.size() - 1);
-            boolean hasMore = !searching && snapshot.size() == PAGE_SIZE;
+            boolean hasMore = snapshot.size() == PAGE_SIZE;
             for (DocumentSnapshot doc : snapshot.getDocuments()) addUserRow(doc);
             moreButton.setVisibility(hasMore ? View.VISIBLE : View.GONE);
             moreButton.setEnabled(true);
