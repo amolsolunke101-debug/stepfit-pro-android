@@ -78,11 +78,24 @@ public class StepCounterService extends Service implements SensorEventListener {
         return stored instanceof Number ? ((Number) stored).longValue() : fallback;
     }
 
+    private String localizedNotificationText(long steps) {
+        String lang = prefs.getString("language", "en");
+        String count = String.format(Locale.getDefault(), "%,d", Math.max(0L, steps));
+        if ("mr".equals(lang)) return "आजची पावले: " + count;
+        if ("hi".equals(lang)) return "आज के कदम: " + count;
+        return "Today's steps: " + count;
+    }
+
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            String lang = prefs.getString("language", "en");
+            String channelName = "mr".equals(lang) ? "StepFit PRO पाऊल मोजणी"
+                    : ("hi".equals(lang) ? "StepFit PRO कदम गणना" : "StepFit PRO Step Counter");
+            String channelDescription = "mr".equals(lang) ? "पावले मोजणे सुरू ठेवते"
+                    : ("hi".equals(lang) ? "कदमों की गिनती जारी रखता है" : "Keeps StepFit PRO step counting active");
             NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "StepFit PRO Step Counter", NotificationManager.IMPORTANCE_LOW);
-            channel.setDescription("Keeps StepFit PRO step counting active");
+                    CHANNEL_ID, channelName, NotificationManager.IMPORTANCE_LOW);
+            channel.setDescription(channelDescription);
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) manager.createNotificationChannel(channel);
         }
@@ -99,7 +112,7 @@ public class StepCounterService extends Service implements SensorEventListener {
                 : new Notification.Builder(this);
 
         return builder.setContentTitle("StepFit PRO")
-                .setContentText(String.format(Locale.getDefault(), "Today's steps: %,d", Math.max(0L, steps)))
+                .setContentText(localizedNotificationText(steps))
                 .setSmallIcon(android.R.drawable.ic_menu_directions)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
