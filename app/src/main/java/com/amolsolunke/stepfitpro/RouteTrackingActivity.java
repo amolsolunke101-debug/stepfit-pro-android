@@ -101,6 +101,64 @@ public class RouteTrackingActivity extends Activity {
         }
     }
 
+    private void showCloudRouteHistory() {
+        if (StepFitCloud.uid() == null) {
+            Toast.makeText(this, "Sign in to view private cloud routes.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        Toast.makeText(this, "Loading private cloud routes…", Toast.LENGTH_SHORT).show();
+        StepFitCloud.loadPrivateRoutes((ok, routes, message) -> runOnUiThread(() -> {
+            if (isFinishing()) return;
+            if (!ok) {
+                Toast.makeText(this, "Cloud history: " + message, Toast.LENGTH_LONG).show();
+                return;
+            }
+            if (routes == null || routes.isEmpty()) {
+                new AlertDialog.Builder(this)
+                    .setTitle("Private Cloud History")
+                    .setMessage("No cloud routes found. Turn on private cloud backup before saving a future GPS route.")
+                    .setPositiveButton(tr(7), null).show();
+                return;
+            }
+            java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault());
+            String[] labels = new String[routes.size()];
+            for (int i = 0; i < routes.size(); i++) {
+                com.google.firebase.firestore.DocumentSnapshot route = routes.get(i);
+                long savedAt = route.getLong("savedAt") == null ? 0L : route.getLong("savedAt");
+                double km = route.getDouble("distanceKm") == null ? 0.0 : route.getDouble("distanceKm");
+                labels[i] = fmt.format(new java.util.Date(savedAt)) + " • "
+                        + String.format(Locale.getDefault(), "%.2f km", km);
+            }
+            new AlertDialog.Builder(this).setTitle("Private Cloud History")
+                .setItems(labels, (dialog, which) -> {
+                    com.google.firebase.firestore.DocumentSnapshot selected = routes.get(which);
+                    String routeId = selected.getId();
+                    long savedAt = selected.getLong("savedAt") == null ? 0L : selected.getLong("savedAt");
+                    double km = selected.getDouble("distanceKm") == null ? 0.0 : selected.getDouble("distanceKm");
+                    long seconds = selected.getLong("durationSeconds") == null ? 0L : selected.getLong("durationSeconds");
+                    String summary = fmt.format(new java.util.Date(savedAt)) + "\\n"
+                            + String.format(Locale.getDefault(), "%.2f km • %02d:%02d:%02d",
+                                km, seconds/3600, (seconds%3600)/60, seconds%60)
+                            + "\\nPrivate to this account.";
+                    new AlertDialog.Builder(this).setTitle("Cloud route details").setMessage(summary)
+                        .setNegativeButton(tr(10), null)
+                        .setPositiveButton("Delete from Cloud", (d, w) ->
+                            new AlertDialog.Builder(this)
+                                .setTitle("Delete cloud route?")
+                                .setMessage("This permanently deletes this route from your private cloud history. Your device's local route history is unchanged.")
+                                .setNegativeButton(tr(10), null)
+                                .setPositiveButton(tr(29), (confirm, choice) ->
+                                    StepFitCloud.deletePrivateRoute(routeId, (deleted, deleteMessage) ->
+                                        runOnUiThread(() -> {
+                                            Toast.makeText(this, deleteMessage, Toast.LENGTH_LONG).show();
+                                            if (deleted) showCloudRouteHistory();
+                                        })))
+                                .show())
+                        .show();
+                }).setPositiveButton(tr(7), null).show();
+        }));
+    }
+
     private void confirmDeleteSavedRoute(int index) {
         new AlertDialog.Builder(this)
                 .setTitle(tr(8))
@@ -390,6 +448,11 @@ public class RouteTrackingActivity extends Activity {
         history.setText(tr(19));
         history.setOnClickListener(v -> showRouteHistory());
         root.addView(history);
+        Button cloudHistory = new Button(this);
+        cloudHistory.setText("mr".equals(language) ? "खाजगी Cloud मार्ग इतिहास" :
+                ("hi".equals(language) ? "निजी Cloud मार्ग इतिहास" : "Private Cloud Route History"));
+        cloudHistory.setOnClickListener(v -> showCloudRouteHistory());
+        root.addView(cloudHistory);
         Button back = new Button(this);
         back.setText(tr(20));
         back.setOnClickListener(v -> finish());
