@@ -674,7 +674,11 @@ public class MainActivity extends Activity {
                 buildShell(); showPage(4);
             }).setNeutralButton("Choose photo", (d, w) -> {
                 Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                pick.addCategory(Intent.CATEGORY_OPENABLE); pick.setType("image/*");
+                pick.addCategory(Intent.CATEGORY_OPENABLE);
+                pick.setType("image/*");
+                // Request a persistable read grant so a locally selected avatar
+                // remains available after the picker/activity is recreated.
+                pick.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
                 startActivityForResult(pick, PICK_PROFILE_PHOTO);
             }).show();
     }
