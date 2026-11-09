@@ -247,12 +247,43 @@ public class RouteTrackingActivity extends Activity {
         }
     }
 
+    private String batteryTipTitle() {
+        if ("mr".equals(language)) return "बॅटरी आणि बॅकग्राउंड सेटिंग्ज";
+        if ("hi".equals(language)) return "बैटरी और बैकग्राउंड सेटिंग्स";
+        return "Battery and background settings";
+    }
+
+    private String batteryTipMessage() {
+        if ("mr".equals(language)) return "स्क्रीन लॉक केल्यावर GPS ट्रॅकिंग थांबत असल्यास Settings > Battery (किंवा App battery management) मध्ये StepFit PRO साठी बॅकग्राउंड वापरास परवानगी द्या. फोननुसार मेनूची नावे बदलू शकतात.";
+        if ("hi".equals(language)) return "यदि स्क्रीन लॉक होने पर GPS ट्रैकिंग रुकती है, तो Settings > Battery (या App battery management) में StepFit PRO के लिए बैकग्राउंड गतिविधि की अनुमति दें। फोन के अनुसार मेनू के नाम अलग हो सकते हैं।";
+        return "If GPS tracking stops when the screen is locked, open Settings > Battery (or App battery management) and allow background activity for StepFit PRO. Menu names vary by phone and software version.";
+    }
+
     private void start() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 71);
             return;
         }
+        android.content.SharedPreferences prefs = getSharedPreferences("StepFitData", MODE_PRIVATE);
+        boolean isOppoFamily = "oppo".equalsIgnoreCase(Build.MANUFACTURER)
+                || "realme".equalsIgnoreCase(Build.MANUFACTURER)
+                || "oneplus".equalsIgnoreCase(Build.MANUFACTURER);
+        if (isOppoFamily && !prefs.getBoolean("gps_battery_tip_shown", false)) {
+            String cancel = "mr".equals(language) ? "रद्द करा" : ("hi".equals(language) ? "रद्द करें" : "Cancel");
+            String proceed = "mr".equals(language) ? "पुढे सुरू ठेवा" : ("hi".equals(language) ? "जारी रखें" : "Continue");
+            new AlertDialog.Builder(this).setTitle(batteryTipTitle()).setMessage(batteryTipMessage())
+                    .setNegativeButton(cancel, (dialog, which) -> { })
+                    .setPositiveButton(proceed, (dialog, which) -> {
+                        prefs.edit().putBoolean("gps_battery_tip_shown", true).apply();
+                        startGpsService();
+                    }).show();
+            return;
+        }
+        startGpsService();
+    }
+
+    private void startGpsService() {
         Intent service = new Intent(this, RouteTrackingService.class).setAction(RouteTrackingService.ACTION_START);
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ContextCompat.startForegroundService(this, service);
