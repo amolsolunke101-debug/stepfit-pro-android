@@ -140,9 +140,15 @@ public class RouteTrackingService extends Service {
             @Override public void onLocationResult(LocationResult result) {
                 if (result == null) return;
                 for (Location loc : result.getLocations()) {
+                    // Reject malformed coordinates before they can affect distance,
+                    // the live track, route history, or GPX export.
+                    double latitude = loc.getLatitude();
+                    double longitude = loc.getLongitude();
+                    if (!Double.isFinite(latitude) || !Double.isFinite(longitude)
+                            || Math.abs(latitude) > 90.0 || Math.abs(longitude) > 180.0) continue;
                     // Ignore low-quality fixes so GPS drift while standing still
                     // does not inflate the recorded distance.
-                    if (loc.hasAccuracy() && loc.getAccuracy() > 50f) continue;
+                    if (loc.hasAccuracy() && (!Float.isFinite(loc.getAccuracy()) || loc.getAccuracy() < 0f || loc.getAccuracy() > 50f)) continue;
                     if (previous != null) {
                         float delta = previous.distanceTo(loc);
                         // Reject large jumps; they are usually GPS drift or a lost fix.
