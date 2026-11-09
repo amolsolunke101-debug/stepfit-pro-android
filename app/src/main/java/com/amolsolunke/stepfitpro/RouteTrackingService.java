@@ -217,8 +217,18 @@ public class RouteTrackingService extends Service {
             callback = null;
         }
         long duration = startedAt > 0 ? Math.max(0, (System.currentTimeMillis() - startedAt) / 1000) : 0;
-        String joinedPoints = compactPointsForHistory();
         android.content.SharedPreferences prefs = getSharedPreferences("StepFitData", MODE_PRIVATE);
+        // Do not replace the previous valid route with an empty recording when
+        // GPS never produced a usable location fix (for example, indoors).
+        if (points.isEmpty()) {
+            prefs.edit().putBoolean("route_tracking", false)
+                    .putFloat("route_live_km", 0f).putLong("route_live_seconds", 0)
+                    .putString("route_live_points", "").apply();
+            stopForeground(true);
+            stopSelf();
+            return;
+        }
+        String joinedPoints = compactPointsForHistory();
         prefs.edit()
                 .putFloat("last_route_km", (float)(meters / 1000.0))
                 .putLong("last_route_duration", duration)
