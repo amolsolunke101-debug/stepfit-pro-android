@@ -19,6 +19,17 @@ import androidx.core.content.ContextCompat;
 import java.util.Locale;
 
 public class RouteTrackingActivity extends Activity {
+
+    private String language = "en";
+    private static final String[][] ROUTE_TEXT = {
+        {"Status  %s\nDistance  %.2f km\nDuration  %02d:%02d:%02d\nAverage speed  %.1f km/h\nGPS points  %d","Recording","Stopped",tr(3),tr(4),tr(5),tr(6),tr(7),tr(8),tr(9),tr(10),tr(11),tr(12),tr(13),tr(14),tr(15),tr(16),tr(17),tr(18),tr(19),tr(20),tr(21),tr(22),tr(23),tr(24),tr(25),tr(26)},
+        {"स्थिती  %s\nअंतर  %.2f किमी\nकालावधी  %02d:%02d:%02d\nसरासरी वेग  %.1f किमी/तास\nGPS पॉइंट्स  %d","रेकॉर्डिंग सुरू","बंद","अद्याप GPS मार्ग जतन केलेले नाहीत.","जतन केलेले GPS मार्ग","दिनांक: %s\nअंतर: %.2f किमी\nकालावधी: %02d:%02d:%02d\nGPS पॉइंट्स: %d","मार्गाचा तपशील","बंद करा","जतन केलेला मार्ग हटवायचा?","हा मार्ग या डिव्हाइसमधून हटवला जाईल. ही कृती पूर्ववत करता येणार नाही.","रद्द करा","मार्ग डिव्हाइसमधून हटवला.","मार्ग हटवता आला नाही.","या मार्गात निर्यात करण्यासाठी GPS पॉइंट्स नाहीत.","GPX निर्यातीसाठी किमान दोन वैध GPS पॉइंट्स आवश्यक आहेत.","GPX फाइल तयार करता आली नाही.","मार्ग दाखवण्यासाठी पुरेसे GPS पॉइंट्स नाहीत","GPS ट्रॅकिंग सुरू करा","थांबवा आणि मार्ग जतन करा","जतन केलेले मार्ग पहा","मागे","GPS मार्ग ट्रॅकिंग","थांबवण्यासाठी सक्रिय GPS मार्ग नाही.","GPS ट्रॅकिंग सुरू झाले नाही. लोकेशन परवानगी तपासून पुन्हा प्रयत्न करा.","GPS ट्रॅकिंग थांबवता आले नाही. पुन्हा प्रयत्न करा.","GPS मार्ग ट्रॅकिंगसाठी लोकेशन परवानगी आवश्यक आहे.","मार्ग इतिहास वाचता आला नाही."},
+        {"स्थिति  %s\nदूरी  %.2f किमी\nअवधि  %02d:%02d:%02d\nऔसत गति  %.1f किमी/घंटा\nGPS पॉइंट  %d","रिकॉर्डिंग जारी","बंद","अभी तक कोई GPS मार्ग सेव नहीं है।","सेव किए गए GPS मार्ग","दिनांक: %s\nदूरी: %.2f किमी\nअवधि: %02d:%02d:%02d\nGPS पॉइंट: %d","मार्ग का विवरण","बंद करें","सेव किया गया मार्ग हटाएँ?","यह मार्ग इस डिवाइस से हट जाएगा। इसे वापस नहीं लाया जा सकता।","रद्द करें","मार्ग इस डिवाइस से हटा दिया गया।","मार्ग हटाया नहीं जा सका।","इस मार्ग में निर्यात के लिए GPS पॉइंट नहीं हैं।","GPX निर्यात के लिए कम से कम दो वैध GPS पॉइंट आवश्यक हैं।","GPX फ़ाइल नहीं बनाई जा सकी।","मार्ग दिखाने के लिए पर्याप्त GPS पॉइंट नहीं हैं","GPS ट्रैकिंग शुरू करें","रोकें और मार्ग सेव करें","सेव किए गए मार्ग देखें","वापस","GPS मार्ग ट्रैकिंग","रोकने के लिए कोई सक्रिय GPS मार्ग नहीं है।","GPS ट्रैकिंग शुरू नहीं हो सकी। लोकेशन अनुमति जाँचें और फिर प्रयास करें।","GPS ट्रैकिंग रोक नहीं सके। कृपया फिर प्रयास करें।","GPS मार्ग ट्रैकिंग के लिए लोकेशन अनुमति आवश्यक है।","मार्ग इतिहास नहीं पढ़ सके।"}
+    };
+    private String tr(int index) {
+        int lang = "mr".equals(language) ? 1 : ("hi".equals(language) ? 2 : 0);
+        return ROUTE_TEXT[lang][index];
+    }
     private TextView stats;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable refresher = new Runnable() {
@@ -39,8 +50,7 @@ public class RouteTrackingActivity extends Activity {
         String raw = active ? p.getString("route_live_points", "") : p.getString("last_route_points", "");
         int count = (raw == null || raw.isEmpty()) ? 0 : raw.split(";").length;
         double speed = seconds > 0 ? km / (seconds / 3600.0) : 0;
-        stats.setText(String.format(Locale.US, "Status  %s\nDistance  %.2f km\nDuration  %02d:%02d:%02d\nAverage speed  %.1f km/h\nGPS points  %d",
-                active ? "Recording" : "Stopped", km, seconds/3600, (seconds%3600)/60, seconds%60, speed, count));
+        stats.setText(String.format(Locale.US, tr(0), active ? tr(1) : tr(2), km, seconds/3600, (seconds%3600)/60, seconds%60, speed, count));
     }
 
     private void showRouteHistory() {
@@ -48,7 +58,7 @@ public class RouteTrackingActivity extends Activity {
         try {
             org.json.JSONArray history = new org.json.JSONArray(prefs.getString("route_history", "[]"));
             if (history.length() == 0) {
-                Toast.makeText(this, "No saved GPS routes yet.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, tr(3), Toast.LENGTH_LONG).show();
                 return;
             }
             String[] labels = new String[history.length()];
@@ -58,7 +68,7 @@ public class RouteTrackingActivity extends Activity {
                 String date = format.format(new java.util.Date(route.optLong("savedAt", 0)));
                 labels[i] = date + " • " + String.format(Locale.getDefault(), "%.2f km", route.optDouble("distanceKm", 0));
             }
-            new AlertDialog.Builder(this).setTitle("Saved GPS Routes")
+            new AlertDialog.Builder(this).setTitle(tr(4))
                 .setItems(labels, (dialog, which) -> {
                     try {
                         org.json.JSONObject route = history.getJSONObject(which);
@@ -78,23 +88,23 @@ public class RouteTrackingActivity extends Activity {
                         detail.addView(summary);
                         detail.addView(new RoutePreview(this, points), new LinearLayout.LayoutParams(-1, dp(220)));
                         detail.setBackgroundColor(Color.rgb(10,18,38));
-                        new AlertDialog.Builder(this).setTitle("Route Details").setView(detail)
-                            .setPositiveButton("Close", null)
+                        new AlertDialog.Builder(this).setTitle(tr(6)).setView(detail)
+                            .setPositiveButton(tr(7), null)
                             .setNeutralButton("Share GPX", (d, w) -> shareRouteAsGpx(route))
                             .setNegativeButton("Delete", (d, w) -> confirmDeleteSavedRoute(which))
                             .show();
                     } catch (org.json.JSONException ignored) {}
-                }).setPositiveButton("Close", null).show();
+                }).setPositiveButton(tr(7), null).show();
         } catch (org.json.JSONException e) {
-            Toast.makeText(this, "Could not read route history.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, tr(26), Toast.LENGTH_LONG).show();
         }
     }
 
     private void confirmDeleteSavedRoute(int index) {
         new AlertDialog.Builder(this)
-                .setTitle("Delete saved route?")
-                .setMessage("This route will be removed from this device. This cannot be undone.")
-                .setNegativeButton("Cancel", null)
+                .setTitle(tr(8))
+                .setMessage(tr(9))
+                .setNegativeButton(tr(10), null)
                 .setPositiveButton("Delete", (dialog, which) -> deleteSavedRoute(index))
                 .show();
     }
@@ -109,17 +119,17 @@ public class RouteTrackingActivity extends Activity {
                 if (i != index) updated.put(history.getJSONObject(i));
             }
             prefs.edit().putString("route_history", updated.toString()).apply();
-            Toast.makeText(this, "Route deleted from this device.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, tr(11), Toast.LENGTH_SHORT).show();
             showRouteHistory();
         } catch (org.json.JSONException e) {
-            Toast.makeText(this, "Could not delete this route.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, tr(12), Toast.LENGTH_LONG).show();
         }
     }
 
     private void shareRouteAsGpx(org.json.JSONObject route) {
         String raw = route.optString("points", "");
         if (raw.isEmpty()) {
-            Toast.makeText(this, "This route has no GPS points to export.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, tr(13), Toast.LENGTH_LONG).show();
             return;
         }
         StringBuilder gpx = new StringBuilder();
@@ -157,7 +167,7 @@ public class RouteTrackingActivity extends Activity {
         }
         gpx.append("</trkseg></trk></gpx>");
         if (validPoints < 2) {
-            Toast.makeText(this, "At least two valid GPS points are needed for GPX export.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, tr(14), Toast.LENGTH_LONG).show();
             return;
         }
         try {
@@ -176,7 +186,7 @@ public class RouteTrackingActivity extends Activity {
             share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             startActivity(Intent.createChooser(share, "Share GPX route"));
         } catch (Exception e) {
-            Toast.makeText(this, "Could not create GPX file for sharing.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, tr(15), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -209,7 +219,7 @@ public class RouteTrackingActivity extends Activity {
             super.onDraw(canvas);
             if (coordinates.size() < 2) {
                 paint.setColor(Color.LTGRAY); paint.setTextSize(dp(14));
-                canvas.drawText("Not enough GPS points for route preview", dp(12), getHeight()/2f, paint);
+                canvas.drawText(tr(16), dp(12), getHeight()/2f, paint);
                 return;
             }
             float minLat=Float.MAX_VALUE,maxLat=-Float.MAX_VALUE,minLon=Float.MAX_VALUE,maxLon=-Float.MAX_VALUE;
@@ -250,14 +260,14 @@ public class RouteTrackingActivity extends Activity {
             handler.removeCallbacks(refresher);
             handler.post(refresher);
         } catch (Exception e) {
-            Toast.makeText(this, "GPS tracking could not start. Check location permission and try again.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, tr(23), Toast.LENGTH_LONG).show();
         }
     }
 
     private void stop() {
         android.content.SharedPreferences prefs = getSharedPreferences("StepFitData", MODE_PRIVATE);
         if (!prefs.getBoolean("route_tracking", false)) {
-            Toast.makeText(this, "No active GPS route to stop.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, tr(22), Toast.LENGTH_SHORT).show();
             refresh();
             return;
         }
@@ -267,7 +277,7 @@ public class RouteTrackingActivity extends Activity {
             handler.removeCallbacks(refresher);
             handler.postDelayed(this::refresh, 500);
         } catch (Exception e) {
-            Toast.makeText(this, "Could not stop GPS tracking. Please try again.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, tr(24), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -280,19 +290,20 @@ public class RouteTrackingActivity extends Activity {
             if (granted) {
                 start();
             } else {
-                Toast.makeText(this, "Location permission is needed for GPS route tracking.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, tr(25), Toast.LENGTH_LONG).show();
             }
         }
     }
 
     @Override public void onCreate(Bundle b) {
         super.onCreate(b);
+        language = getSharedPreferences("StepFitData", MODE_PRIVATE).getString("language", "en");
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(1);
         root.setPadding(24,24,24,24);
         root.setBackgroundColor(Color.rgb(10,18,38));
         TextView title = new TextView(this);
-        title.setText("GPS Route Tracking");
+        title.setText(tr(21));
         title.setTextColor(Color.WHITE);
         title.setTextSize(24);
         title.setGravity(Gravity.CENTER);
@@ -303,19 +314,19 @@ public class RouteTrackingActivity extends Activity {
         stats.setPadding(8,36,8,36);
         root.addView(stats);
         Button go = new Button(this);
-        go.setText("Start GPS Tracking");
+        go.setText(tr(17));
         go.setOnClickListener(v -> start());
         root.addView(go);
         Button end = new Button(this);
-        end.setText("Stop and Save Route");
+        end.setText(tr(18));
         end.setOnClickListener(v -> stop());
         root.addView(end);
         Button history = new Button(this);
-        history.setText("View Saved Route History");
+        history.setText(tr(19));
         history.setOnClickListener(v -> showRouteHistory());
         root.addView(history);
         Button back = new Button(this);
-        back.setText("Back");
+        back.setText(tr(20));
         back.setOnClickListener(v -> finish());
         root.addView(back);
         setContentView(root);
