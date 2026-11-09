@@ -161,7 +161,7 @@ public final class StepFitCloud {
                                         long durationSeconds, String points, Result result) {
         final String id = uid();
         if (id == null || routeId == null || !routeId.matches("[A-Za-z0-9_-]{1,64}")
-                || points == null || points.length() > 180000
+                || savedAt <= 0 || points == null || points.length() > 180000
                 || !Double.isFinite(distanceKm) || distanceKm < 0
                 || durationSeconds < 0) {
             if (result != null) result.done(false, "Invalid route data or sign-in required.");
@@ -181,7 +181,8 @@ public final class StepFitCloud {
         data.put("updatedAt", FieldValue.serverTimestamp());
         DB.collection("users").document(id).collection("routes").document(routeId).set(data)
           .addOnSuccessListener(v -> {
-              if (result != null) result.done(true, "Private route backup saved.");
+              if (result != null) result.done(id.equals(uid()), id.equals(uid())
+                      ? "Private route backup saved." : "Account changed. Backup result was not applied to the current account.");
           })
           .addOnFailureListener(e -> {
               if (result != null) result.done(false, e.getLocalizedMessage());
@@ -196,7 +197,10 @@ public final class StepFitCloud {
             return;
         }
         DB.collection("users").document(id).collection("routes").document(routeId).delete()
-          .addOnSuccessListener(v -> { if (result != null) result.done(true, "Cloud route deleted."); })
+          .addOnSuccessListener(v -> {
+              if (result != null) result.done(id.equals(uid()), id.equals(uid())
+                      ? "Cloud route deleted." : "Account changed. Please refresh cloud history.");
+          })
           .addOnFailureListener(e -> { if (result != null) result.done(false, e.getLocalizedMessage()); });
     }
 
@@ -220,7 +224,8 @@ public final class StepFitCloud {
               if (result != null) result.done(true, snapshot.getDocuments(), "Cloud routes loaded.");
           })
           .addOnFailureListener(e -> {
-              if (result != null) result.done(false, new java.util.ArrayList<>(), e.getLocalizedMessage());
+              if (result != null) result.done(false, new java.util.ArrayList<>(),
+                      id.equals(uid()) ? e.getLocalizedMessage() : "Account changed. Please try again.");
           });
     }
 
