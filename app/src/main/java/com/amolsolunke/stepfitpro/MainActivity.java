@@ -167,9 +167,20 @@ public class MainActivity extends Activity {
         showPage(0);
         startStepService();
 
-        // Restore an existing cloud profile on this device, or create the
-        // first cloud profile from locally saved details after sign-in.
+        // Keep locally cached profile fields scoped to the Firebase account.
+        // When another account signs in on this device, do not seed it with
+        // the previous account's name, age, gender, or avatar.
         if (auth != null && auth.getCurrentUser() != null) {
+            String signedInUid = auth.getCurrentUser().getUid();
+            String previousProfileUid = prefs.getString("profile_owner_uid", "");
+            if (!previousProfileUid.isEmpty() && !previousProfileUid.equals(signedInUid)) {
+                prefs.edit().remove("profile_name").remove("profile_age")
+                    .remove("profile_gender").remove("profile_photo_uri").apply();
+            }
+            prefs.edit().putString("profile_owner_uid", signedInUid).apply();
+
+            // Restore an existing cloud profile on this device, or create the
+            // first cloud profile from locally saved details after sign-in.
             StepFitCloud.loadOrCreateProfile(
                 prefs.getString("profile_name", ""),
                 prefs.getString("profile_age", ""),
