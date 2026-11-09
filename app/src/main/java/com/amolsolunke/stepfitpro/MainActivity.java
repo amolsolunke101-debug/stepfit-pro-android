@@ -39,6 +39,7 @@ public class MainActivity extends Activity {
     private GoogleSignInClient googleSignInClient;
     private EditText emailInput, passwordInput;
     private static final int PICK_PROFILE_PHOTO = 2001;
+    private String pendingPhotoOwnerUid;
 
     private final BroadcastReceiver stepsReceiver = new BroadcastReceiver() {
         @Override
@@ -296,6 +297,14 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == PICK_PROFILE_PHOTO && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            String currentUid = auth == null || auth.getCurrentUser() == null
+                ? null : auth.getCurrentUser().getUid();
+            if (!java.util.Objects.equals(pendingPhotoOwnerUid, currentUid)) {
+                Toast.makeText(this, "Account changed. Please choose the photo again.", Toast.LENGTH_LONG).show();
+                pendingPhotoOwnerUid = null;
+                return;
+            }
+            pendingPhotoOwnerUid = null;
             android.net.Uri uri = data.getData();
             try { getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (Exception ignored) {}
             prefs.edit().putString("profile_photo_uri", uri.toString()).apply();
@@ -714,6 +723,8 @@ public class MainActivity extends Activity {
                 }
                 buildShell(); showPage(4);
             }).setNeutralButton("Choose photo", (d, w) -> {
+                pendingPhotoOwnerUid = auth == null || auth.getCurrentUser() == null
+                    ? null : auth.getCurrentUser().getUid();
                 Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 pick.addCategory(Intent.CATEGORY_OPENABLE);
                 pick.setType("image/*");
