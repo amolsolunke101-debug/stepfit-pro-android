@@ -68,7 +68,7 @@ public class MainActivity extends Activity {
         "Highest day","About StepFit PRO","Offline step counter",
         "Choose language","Choose theme","Settings saved",
         "Enter goal (0 = no goal)","Sensor permission needed",
-        "Permission required"
+        "Permission required","No goal set","steps"
       },
       {
         "मुख्यपृष्ठ","प्रगती","इतिहास","आलेख","सेटिंग्ज","माहिती",
@@ -82,7 +82,7 @@ public class MainActivity extends Activity {
         "StepFit PRO बद्दल","ऑफलाइन स्टेप काउंटर",
         "भाषा निवडा","थीम निवडा","सेटिंग्ज जतन झाल्या",
         "लक्ष्य भरा (० = लक्ष्य नाही)","सेन्सर परवानगी आवश्यक",
-        "परवानगी आवश्यक"
+        "परवानगी आवश्यक","लक्ष्य निश्चित केलेले नाही","पावले"
       },
       {
         "होम","प्रगति","इतिहास","चार्ट","सेटिंग्स","जानकारी",
@@ -96,7 +96,7 @@ public class MainActivity extends Activity {
         "StepFit PRO के बारे में","ऑफलाइन स्टेप काउंटर",
         "भाषा चुनें","थीम चुनें","सेटिंग्स सहेजी गईं",
         "लक्ष्य दर्ज करें (0 = कोई लक्ष्य नहीं)","सेंसर की अनुमति आवश्यक",
-        "अनुमति आवश्यक"
+        "अनुमति आवश्यक","लक्ष्य निर्धारित नहीं है","कदम"
       },
       {
         "Inicio","Progreso","Historial","Gráficos","Ajustes",
@@ -110,7 +110,7 @@ public class MainActivity extends Activity {
         "Acerca de StepFit PRO","Contador sin conexión",
         "Elegir idioma","Elegir tema","Ajustes guardados",
         "Meta (0 = sin meta)","Permiso del sensor necesario",
-        "Permiso necesario"
+        "Permiso necesario","Sin objetivo","pasos"
       }
     };
 
@@ -483,7 +483,7 @@ public class MainActivity extends Activity {
         addCard(t(6), String.format(Locale.US, "%,d", steps));
         addCard(t(1), String.format(Locale.US, "%.2f km", distanceKm));
         addCard(t(2), String.format(Locale.US, "%.0f kcal", calories));
-        addCard(t(9), goal <= 0 ? "No limit" : steps + " / " + goal);
+        addCard(t(9), goal <= 0 ? t(39) : steps + " / " + goal);
         int percent = goal <= 0 ? 0 : Math.min(100, (int) (steps * 100.0 / goal));
         ProgressBar bar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         bar.setMax(100); bar.setProgress(percent); content.addView(bar, lp(-1, 22));
@@ -504,7 +504,7 @@ public class MainActivity extends Activity {
     private void showProgress() {
         long steps = getSteps(); int goal = prefs.getInt("goal", 0);
         addCard(t(27), String.format(Locale.US, "%,d", steps));
-        addCard(t(26), goal <= 0 ? "No goal set" : Math.min(100, (int) (steps * 100.0 / Math.max(1, goal))) + "%");
+        addCard(t(26), goal <= 0 ? t(39) : Math.min(100, (int) (steps * 100.0 / Math.max(1, goal))) + "%");
         long total = 0L, highest = 0L;
         for (int i = 0; i < 7; i++) {
             String date = dateMinus(i);
@@ -513,7 +513,7 @@ public class MainActivity extends Activity {
             long count = Math.max(0L, value);
             total = total > Long.MAX_VALUE - count ? Long.MAX_VALUE : total + count;
             highest = Math.max(highest, count);
-            TextView day = text(date + "    " + count + " steps", 14, Color.WHITE, false);
+            TextView day = text(date + "    " + count + " " + t(40), 14, Color.WHITE, false);
             day.setBackground(shape(card, 12)); content.addView(day, lp(-1, 44));
         }
         addCard(t(28), String.valueOf(total / 7)); addCard(t(29), String.valueOf(highest));
@@ -577,7 +577,7 @@ public class MainActivity extends Activity {
         for (int i = 0; i < 30; i++) {
             String date = dateMinus(i);
             long count = i == 0 ? getSteps() : prefs.getLong("history_" + date, 0);
-            TextView item = text(date + "     " + Math.max(0, count) + " steps", 15, Color.WHITE, false);
+            TextView item = text(date + "     " + Math.max(0, count) + " " + t(40), 15, Color.WHITE, false);
             item.setBackground(shape(card, 12));
             LinearLayout.LayoutParams p = lp(-1, 46); p.setMargins(0, dp(3), 0, dp(3));
             content.addView(item, p);
