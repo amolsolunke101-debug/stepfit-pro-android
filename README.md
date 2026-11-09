@@ -63,8 +63,10 @@ Replace the example path and UID with the actual values. Never send the service-
 
 ## Current limitations to verify before public release
 
-- Firebase security rules must be deployed and tested in the Firebase project.
+- Firebase security rules must be deployed to the intended Firebase project and verified there. GitHub Actions security-rule tests passing do not mean the rules have been deployed.
 - The owner must securely assign the admin custom claim before the Admin Panel can be used.
-- Route history is currently stored locally on the device; it is not a cloud-synced route archive.
+- GPS route history remains local by default. A separate, unchecked-by-default consent option enables private backup of a completed route to the signed-in user's own Firestore `users/{uid}/routes` collection. The Route Tracking screen includes a private Cloud History view and cloud-route deletion. Cloud routes are intended to be readable/deletable only by their owner under `firestore.rules`; they are not shared with friends or clubs.
+- Before using cloud route backup/history, deploy the repository's Firestore rules to the intended Firebase project. GitHub Actions validates the rules and builds the app, but does not deploy Firebase rules. Cloud route backup requires sign-in and internet; local GPS tracking/history remain separate.
+- Keep GPS cloud backup disabled unless the user explicitly opts in. Precise location history is sensitive; explain the privacy implications before enabling it.
 - Challenge participation and basic personal progress are present; a verified, multi-user challenge leaderboard with server-trusted scoring is still future work.
 - A successful GitHub build verifies compilation only. Device behavior, sensor accuracy, GPS behavior, account flows, and Android-version compatibility still require real-device testing.
