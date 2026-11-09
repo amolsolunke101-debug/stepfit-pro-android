@@ -107,19 +107,25 @@ public final class StepFitCloud {
     }
 
     public static void uploadProfilePhoto(Uri photo, Result result) {
-        String id = uid();
+        final String id = uid();
         if (id == null || photo == null) { result.done(false, "Sign in and choose a photo."); return; }
         StorageReference ref = STORAGE.getReference().child("profilePhotos/" + id + "/avatar");
         ref.putFile(photo).continueWithTask(task -> {
             if (!task.isSuccessful()) throw task.getException();
             return ref.getDownloadUrl();
-        }).addOnSuccessListener(url ->
+        }).addOnSuccessListener(url -> {
+            // Do not update the previous account's profile if the user switched
+            // accounts while the upload was in progress.
+            if (!id.equals(uid())) {
+                result.done(false, "Account changed. The photo was uploaded to the previous account but its profile was not updated.");
+                return;
+            }
             DB.collection("users").document(id).set(
                 java.util.Collections.singletonMap("photoUrl", url.toString()),
                 com.google.firebase.firestore.SetOptions.merge())
               .addOnSuccessListener(v -> result.done(true, "Profile photo synced."))
-              .addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()))
-        ).addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()));
+              .addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()));
+        }).addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()));
     }
 
     public static void saveDailyStats(long steps, double distanceKm, double calories, Result result) {
