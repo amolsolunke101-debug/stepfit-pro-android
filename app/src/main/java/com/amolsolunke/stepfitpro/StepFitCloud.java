@@ -65,21 +65,17 @@ public final class StepFitCloud {
                           && requestedEmail != null && !requestedEmail.trim().isEmpty()) {
                       missingFields.put("email", requestedEmail);
                   }
+                  final String resolvedName = name == null ? (localName == null ? "" : localName) : name;
+                  final String resolvedAge = age == null ? (localAge == null ? "" : localAge) : age;
+                  final String resolvedGender = gender == null ? (localGender == null ? "" : localGender) : gender;
                   if (!missingFields.isEmpty()) {
                       missingFields.put("updatedAt", FieldValue.serverTimestamp());
                       DB.collection("users").document(id)
                           .set(missingFields, com.google.firebase.firestore.SetOptions.merge())
-                          .addOnSuccessListener(v -> result.done(true,
-                              name == null ? (localName == null ? "" : localName) : name,
-                              age == null ? (localAge == null ? "" : localAge) : age,
-                              gender == null ? (localGender == null ? "" : localGender) : gender))
-                          .addOnFailureListener(e -> result.done(false,
-                              localName, localAge, localGender));
+                          .addOnSuccessListener(v -> result.done(true, resolvedName, resolvedAge, resolvedGender))
+                          .addOnFailureListener(e -> result.done(false, localName, localAge, localGender));
                   } else {
-                      result.done(true,
-                          name == null ? (localName == null ? "" : localName) : name,
-                          age == null ? (localAge == null ? "" : localAge) : age,
-                          gender == null ? (localGender == null ? "" : localGender) : gender);
+                      result.done(true, resolvedName, resolvedAge, resolvedGender);
                   }
               } else {
                   // Write the profile to the UID captured before the read,
