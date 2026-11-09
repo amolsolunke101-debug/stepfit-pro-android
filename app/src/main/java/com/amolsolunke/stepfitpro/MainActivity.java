@@ -68,7 +68,7 @@ public class MainActivity extends Activity {
         "Highest day","About StepFit PRO","Offline step counter",
         "Choose language","Choose theme","Settings saved",
         "Enter goal (0 = no goal)","Sensor permission needed",
-        "Permission required","No goal set","steps","Refresh","Daily steps"
+        "Permission required","No goal set","steps","Refresh","Daily steps","My Profile","Profile","Not set","GPS Route Tracking","Friends • Clubs • Challenges • Admin","Sync Profile and Activity","Signed in: ","Sign out"
       },
       {
         "मुख्यपृष्ठ","प्रगती","इतिहास","आलेख","सेटिंग्ज","माहिती",
@@ -82,7 +82,7 @@ public class MainActivity extends Activity {
         "StepFit PRO बद्दल","ऑफलाइन स्टेप काउंटर",
         "भाषा निवडा","थीम निवडा","सेटिंग्ज जतन झाल्या",
         "लक्ष्य भरा (० = लक्ष्य नाही)","सेन्सर परवानगी आवश्यक",
-        "परवानगी आवश्यक","लक्ष्य निश्चित केलेले नाही","पावले","रीफ्रेश","दैनिक पावले"
+        "परवानगी आवश्यक","लक्ष्य निश्चित केलेले नाही","पावले","रीफ्रेश","दैनिक पावले","माझे प्रोफाइल","प्रोफाइल","सेट केलेले नाही","GPS मार्ग ट्रॅकिंग","मित्र • क्लब • आव्हाने • प्रशासक","प्रोफाइल व हालचाली समक्रमित करा","लॉगिन: ","बाहेर पडा"
       },
       {
         "होम","प्रगति","इतिहास","चार्ट","सेटिंग्स","जानकारी",
@@ -96,7 +96,7 @@ public class MainActivity extends Activity {
         "StepFit PRO के बारे में","ऑफलाइन स्टेप काउंटर",
         "भाषा चुनें","थीम चुनें","सेटिंग्स सहेजी गईं",
         "लक्ष्य दर्ज करें (0 = कोई लक्ष्य नहीं)","सेंसर की अनुमति आवश्यक",
-        "अनुमति आवश्यक","लक्ष्य निर्धारित नहीं है","कदम","रीफ्रेश","दैनिक कदम"
+        "अनुमति आवश्यक","लक्ष्य निर्धारित नहीं है","कदम","रीफ्रेश","दैनिक कदम","मेरी प्रोफ़ाइल","प्रोफ़ाइल","सेट नहीं है","GPS मार्ग ट्रैकिंग","मित्र • क्लब • चुनौतियाँ • एडमिन","प्रोफ़ाइल और गतिविधि सिंक करें","लॉगिन: ","साइन आउट"
       },
       {
         "Inicio","Progreso","Historial","Gráficos","Ajustes",
@@ -110,7 +110,7 @@ public class MainActivity extends Activity {
         "Acerca de StepFit PRO","Contador sin conexión",
         "Elegir idioma","Elegir tema","Ajustes guardados",
         "Meta (0 = sin meta)","Permiso del sensor necesario",
-        "Permiso necesario","Sin objetivo","pasos","Actualizar","Pasos diarios"
+        "Permiso necesario","Sin objetivo","pasos","Actualizar","Pasos diarios","Mi perfil","Perfil","No definido","Seguimiento GPS","Amigos • Clubes • Retos • Admin","Sincronizar perfil y actividad","Sesión: ","Cerrar sesión"
       }
     };
 
@@ -594,12 +594,12 @@ public class MainActivity extends Activity {
         avatarParams.setMargins(0, dp(8), 0, dp(8));
         content.addView(avatar, avatarParams);
         loadProfilePhoto(avatar);
-        Button profileButton = new Button(this); profileButton.setText("My Profile");
+        Button profileButton = new Button(this); profileButton.setText(t(43));
         profileButton.setOnClickListener(v -> editProfile()); content.addView(profileButton, lp(-1, 50));
         String profileName = prefs.getString("profile_name", "");
         String profileAge = prefs.getString("profile_age", "");
         String profileGender = prefs.getString("profile_gender", "");
-        content.addView(text("Profile: " + (profileName.isEmpty() ? "Not set" : profileName) +
+        content.addView(text(t(44) + ": " + (profileName.isEmpty() ? t(45) : profileName) +
             (profileAge.isEmpty() ? "" : " • " + profileAge) +
             (profileGender.isEmpty() ? "" : " • " + profileGender), 14, Color.WHITE, false), lp(-1, 42));
         Button goalButton = new Button(this); goalButton.setText(t(10));
@@ -620,13 +620,13 @@ public class MainActivity extends Activity {
         Button aboutButton = new Button(this); aboutButton.setText(t(5));
         aboutButton.setOnClickListener(v -> showPage(3));
         content.addView(aboutButton, lp(-1, 50));
-        Button gpsButton = new Button(this); gpsButton.setText("GPS Route Tracking");
+        Button gpsButton = new Button(this); gpsButton.setText(t(46));
         gpsButton.setOnClickListener(v -> startActivity(new Intent(this, RouteTrackingActivity.class)));
         content.addView(gpsButton, lp(-1, 50));
-        Button communityButton = new Button(this); communityButton.setText("Friends • Clubs • Challenges • Admin");
+        Button communityButton = new Button(this); communityButton.setText(t(47));
         communityButton.setOnClickListener(v -> startActivity(new Intent(this, CommunityActivity.class)));
         content.addView(communityButton, lp(-1, 50));
-        Button syncButton = new Button(this); syncButton.setText("Sync Profile and Activity");
+        Button syncButton = new Button(this); syncButton.setText(t(48));
         syncButton.setOnClickListener(v -> {
             StepFitCloud.syncProfile(prefs.getString("profile_name",""), prefs.getString("profile_age",""),
                 prefs.getString("profile_gender",""), (ok, message) -> runOnUiThread(() -> Toast.makeText(this,message,Toast.LENGTH_LONG).show()));
@@ -635,9 +635,9 @@ public class MainActivity extends Activity {
         });
         content.addView(syncButton, lp(-1, 50));
         if (auth != null && auth.getCurrentUser() != null) {
-            TextView account = text("Signed in: " + auth.getCurrentUser().getEmail(), 13, Color.WHITE, false);
+            TextView account = text(t(49) + auth.getCurrentUser().getEmail(), 13, Color.WHITE, false);
             content.addView(account, lp(-1, 44));
-            Button signOut = new Button(this); signOut.setText("Sign out");
+            Button signOut = new Button(this); signOut.setText(t(50));
             signOut.setOnClickListener(v -> {
                 // Clear account-owned profile cache on sign-out so the next
                 // offline session or another account cannot see this user's data.
