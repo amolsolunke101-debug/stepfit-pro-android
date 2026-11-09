@@ -186,7 +186,10 @@ public class MainActivity extends Activity {
                 prefs.getString("profile_age", ""),
                 prefs.getString("profile_gender", ""),
                 (ok, name, age, gender) -> runOnUiThread(() -> {
-                    if (!ok || isFinishing()) return;
+                    // Ignore a delayed response if the user signed out or
+                    // switched accounts while the profile request was running.
+                    if (!ok || isFinishing() || auth == null || auth.getCurrentUser() == null
+                            || !signedInUid.equals(auth.getCurrentUser().getUid())) return;
                     String safeName = name == null ? "" : name;
                     String safeAge = age == null ? "" : age;
                     String safeGender = gender == null ? "" : gender;
