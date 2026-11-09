@@ -200,6 +200,30 @@ public final class StepFitCloud {
           .addOnFailureListener(e -> { if (result != null) result.done(false, e.getLocalizedMessage()); });
     }
 
+    public interface PrivateRoutesResult { void done(boolean ok, java.util.List<DocumentSnapshot> routes, String message); }
+
+    /** List only the signed-in user's private GPS routes, newest first. */
+    public static void loadPrivateRoutes(PrivateRoutesResult result) {
+        final String id = uid();
+        if (id == null) {
+            if (result != null) result.done(false, new java.util.ArrayList<>(), "Sign in to view cloud routes.");
+            return;
+        }
+        DB.collection("users").document(id).collection("routes")
+          .orderBy("savedAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+          .limit(50).get()
+          .addOnSuccessListener(snapshot -> {
+              if (!id.equals(uid())) {
+                  if (result != null) result.done(false, new java.util.ArrayList<>(), "Account changed. Please try again.");
+                  return;
+              }
+              if (result != null) result.done(true, snapshot.getDocuments(), "Cloud routes loaded.");
+          })
+          .addOnFailureListener(e -> {
+              if (result != null) result.done(false, new java.util.ArrayList<>(), e.getLocalizedMessage());
+          });
+    }
+
     public static void saveDailyStats(long steps, double distanceKm, double calories, Result result) {
         final String id = uid();
         if (id == null) {
