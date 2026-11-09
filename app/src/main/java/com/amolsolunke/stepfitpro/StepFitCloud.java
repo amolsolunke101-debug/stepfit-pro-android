@@ -147,26 +147,33 @@ public final class StepFitCloud {
         String id = uid();
         if (id == null) { result.done(null); return; }
         DB.collection("users").document(id).get()
-          .addOnSuccessListener(doc -> result.done(doc.getString("photoUrl")))
+          .addOnSuccessListener(doc -> result.done(isCurrentUser(id) ? doc.getString("photoUrl") : null))
           .addOnFailureListener(e -> result.done(null));
     }
 
     public static void uploadProfilePhoto(Uri photo, Result result) {
         final String id = uid();
         if (id == null || photo == null) { result.done(false, "Sign in and choose a photo."); return; }
+        // Refuse to begin an upload unless the captured account is still active.
+        if (!isCurrentUser(id)) {
+            result.done(false, "Account changed. Please choose the photo again.");
+            return;
+        }
         StorageReference ref = STORAGE.getReference().child("profilePhotos/" + id + "/avatar");
         ref.putFile(photo).continueWithTask(task -> {
             if (!task.isSuccessful()) throw task.getException();
             return ref.getDownloadUrl();
         }).addOnSuccessListener(url -> {
-            if (!id.equals(uid())) {
-                result.done(false, "Account changed. The photo was uploaded to the previous account but its profile was not updated.");
+            // The upload path is UID-scoped; never write its URL into another account.
+            if (!isCurrentUser(id)) {
+                result.done(false, "Account changed. The photo upload was not linked to the current profile.");
                 return;
             }
             DB.collection("users").document(id).set(
                 java.util.Collections.singletonMap("photoUrl", url.toString()),
                 com.google.firebase.firestore.SetOptions.merge())
-              .addOnSuccessListener(v -> result.done(true, "Profile photo synced."))
+              .addOnSuccessListener(v -> result.done(isCurrentUser(id),
+                  isCurrentUser(id) ? "Profile photo synced." : "Account changed. Please refresh the profile."))
               .addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()));
         }).addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()));
     }
