@@ -19,13 +19,12 @@ import java.util.Locale;
 
 public class AdminActivity extends Activity {
     private static final int PAGE_SIZE = 25;
-    private LinearLayout list;
+    private LinearLayout rows;
     private EditText searchInput;
     private Button moreButton;
     private String ownerUid;
     private DocumentSnapshot lastVisible;
     private boolean loading;
-    private boolean hasMore;
     private boolean searching;
     private String activeSearch = "";
 
@@ -34,32 +33,35 @@ public class AdminActivity extends Activity {
         ownerUid = FirebaseAuth.getInstance().getCurrentUser() == null ? null
             : FirebaseAuth.getInstance().getCurrentUser().getUid();
         ScrollView scroll = new ScrollView(this);
-        list = new LinearLayout(this);
-        list.setOrientation(LinearLayout.VERTICAL);
-        list.setPadding(24, 24, 24, 24);
-        scroll.addView(list);
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(24, 24, 24, 24);
+        scroll.addView(root);
         setContentView(scroll);
 
         TextView title = new TextView(this);
         title.setText("StepFit PRO — Admin Panel");
         title.setTextSize(22);
         title.setGravity(Gravity.CENTER);
-        list.addView(title);
+        root.addView(title);
 
         searchInput = new EditText(this);
         searchInput.setSingleLine(true);
         searchInput.setHint("Search users by name");
-        list.addView(searchInput);
+        root.addView(searchInput);
         Button searchButton = new Button(this);
         searchButton.setText("Search");
         searchButton.setOnClickListener(v -> startSearch());
-        list.addView(searchButton);
+        root.addView(searchButton);
 
+        rows = new LinearLayout(this);
+        rows.setOrientation(LinearLayout.VERTICAL);
+        root.addView(rows);
         moreButton = new Button(this);
         moreButton.setText("Load more users");
         moreButton.setVisibility(View.GONE);
         moreButton.setOnClickListener(v -> loadUsers(false));
-        list.addView(moreButton);
+        root.addView(moreButton);
         verifyAndLoad();
     }
 
@@ -86,8 +88,7 @@ public class AdminActivity extends Activity {
         activeSearch = searchInput.getText().toString().trim();
         searching = !activeSearch.isEmpty();
         lastVisible = null;
-        hasMore = false;
-        list.removeViews(3, Math.max(0, list.getChildCount() - 3));
+        rows.removeAllViews();
         moreButton.setVisibility(View.GONE);
         loadUsers(true);
     }
@@ -95,7 +96,10 @@ public class AdminActivity extends Activity {
     private void loadUsers(boolean reset) {
         if (!sameAccount()) { deny(); return; }
         if (loading) return;
-        if (reset) lastVisible = null;
+        if (reset) {
+            lastVisible = null;
+            rows.removeAllViews();
+        }
         loading = true;
         moreButton.setEnabled(false);
 
@@ -117,18 +121,15 @@ public class AdminActivity extends Activity {
         query.get().addOnSuccessListener(snapshot -> {
             loading = false;
             if (isFinishing() || !sameAccount()) { deny(); return; }
-            if (reset) {
-                list.removeViews(3, Math.max(0, list.getChildCount() - 3));
-            }
             if (!snapshot.isEmpty()) lastVisible = snapshot.getDocuments().get(snapshot.size() - 1);
-            hasMore = !searching && snapshot.size() == PAGE_SIZE;
+            boolean hasMore = !searching && snapshot.size() == PAGE_SIZE;
             for (DocumentSnapshot doc : snapshot.getDocuments()) addUserRow(doc);
             moreButton.setVisibility(hasMore ? View.VISIBLE : View.GONE);
             moreButton.setEnabled(true);
             if (snapshot.isEmpty() && reset) {
                 TextView empty = new TextView(this);
                 empty.setText(searching ? "No matching users found." : "No registered users found.");
-                list.addView(empty, 3);
+                rows.addView(empty);
             }
         }).addOnFailureListener(error -> {
             loading = false;
@@ -149,16 +150,16 @@ public class AdminActivity extends Activity {
             + "\n" + (email == null ? "No email" : email)
             + "\nUID: " + uid + "\nStatus: " + (blocked ? "Blocked" : "Active"));
         details.setTextSize(14);
-        list.addView(details);
+        rows.addView(details);
         if (!uid.equals(ownerUid)) {
             Button action = new Button(this);
             action.setText(blocked ? "Unblock user" : "Block user");
             action.setOnClickListener(v -> confirmBlock(uid, blocked));
-            list.addView(action);
+            rows.addView(action);
         } else {
             TextView self = new TextView(this);
             self.setText("Current admin account — protected from self-blocking");
-            list.addView(self);
+            rows.addView(self);
         }
     }
 
@@ -176,10 +177,7 @@ public class AdminActivity extends Activity {
                     runOnUiThread(() -> {
                         if (isFinishing()) return;
                         Toast.makeText(this, message, Toast.LENGTH_LONG).show();
-                        if (ok && sameAccount()) {
-                            lastVisible = null;
-                            loadUsers(true);
-                        }
+                        if (ok && sameAccount()) loadUsers(true);
                     }));
             }).show();
     }
