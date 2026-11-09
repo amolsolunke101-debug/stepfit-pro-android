@@ -149,17 +149,26 @@ public final class StepFitCloud {
     }
 
     public static void saveDailyStats(long steps, double distanceKm, double calories, Result result) {
-        String id = uid();
-        if (id == null) return;
-        String day = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+        // Bind this write to the account that initiated it. A later account
+        // switch must never redirect activity data to the newly signed-in user.
+        final String id = uid();
+        if (id == null) {
+            if (result != null) result.done(false, "Sign in to sync activity.");
+            return;
+        }
+        final String day = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
             .format(new java.util.Date());
         Map<String,Object> data = new HashMap<>();
         data.put("date", day); data.put("steps", steps);
         data.put("distanceKm", distanceKm); data.put("calories", calories);
         data.put("updatedAt", FieldValue.serverTimestamp());
         DB.collection("users").document(id).collection("dailyStats").document(day).set(data)
-          .addOnSuccessListener(v -> { if (result != null) result.done(true, "Activity synced."); })
-          .addOnFailureListener(e -> { if (result != null) result.done(false, e.getLocalizedMessage()); });
+          .addOnSuccessListener(v -> {
+              if (result != null) result.done(true, "Activity synced to the account that started the sync.");
+          })
+          .addOnFailureListener(e -> {
+              if (result != null) result.done(false, e.getLocalizedMessage());
+          });
     }
 
     public static void sendFriendRequest(String targetUid, Result result) {
