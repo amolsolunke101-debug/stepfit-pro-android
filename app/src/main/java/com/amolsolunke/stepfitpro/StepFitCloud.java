@@ -101,18 +101,25 @@ public final class StepFitCloud {
     }
 
     public static void syncProfile(String name, String age, String gender, Result result) {
-        String id = uid();
-        if (id == null) { result.done(false, "Sign in to sync your profile."); return; }
+        // Read UID and email from the same FirebaseUser snapshot so a fast
+        // account switch cannot mix one user's document with another's email.
+        FirebaseUser requestedUser = FirebaseAuth.getInstance().getCurrentUser();
+        final String id = requestedUser == null ? null : requestedUser.getUid();
+        final String email = requestedUser == null ? null : requestedUser.getEmail();
+        if (id == null) {
+            if (result != null) result.done(false, "Sign in to sync your profile.");
+            return;
+        }
         Map<String,Object> data = new HashMap<>();
         data.put("uid", id);
-        data.put("email", FirebaseAuth.getInstance().getCurrentUser().getEmail());
+        if (email != null) data.put("email", email);
         data.put("name", name == null ? "" : name);
         data.put("age", age == null ? "" : age);
         data.put("gender", gender == null ? "" : gender);
         data.put("updatedAt", FieldValue.serverTimestamp());
         DB.collection("users").document(id).set(data, com.google.firebase.firestore.SetOptions.merge())
-          .addOnSuccessListener(v -> result.done(true, "Profile synced."))
-          .addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()));
+          .addOnSuccessListener(v -> { if (result != null) result.done(true, "Profile synced to the account that started the sync."); })
+          .addOnFailureListener(e -> { if (result != null) result.done(false, e.getLocalizedMessage()); });
     }
 
     public interface PhotoUrlResult { void done(String photoUrl); }
