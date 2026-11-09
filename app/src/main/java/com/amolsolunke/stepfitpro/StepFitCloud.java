@@ -68,12 +68,19 @@ public final class StepFitCloud {
                   if (!missingFields.isEmpty()) {
                       missingFields.put("updatedAt", FieldValue.serverTimestamp());
                       DB.collection("users").document(id)
-                          .set(missingFields, com.google.firebase.firestore.SetOptions.merge());
+                          .set(missingFields, com.google.firebase.firestore.SetOptions.merge())
+                          .addOnSuccessListener(v -> result.done(true,
+                              name == null ? (localName == null ? "" : localName) : name,
+                              age == null ? (localAge == null ? "" : localAge) : age,
+                              gender == null ? (localGender == null ? "" : localGender) : gender))
+                          .addOnFailureListener(e -> result.done(false,
+                              localName, localAge, localGender));
+                  } else {
+                      result.done(true,
+                          name == null ? (localName == null ? "" : localName) : name,
+                          age == null ? (localAge == null ? "" : localAge) : age,
+                          gender == null ? (localGender == null ? "" : localGender) : gender);
                   }
-                  result.done(true,
-                      name == null ? (localName == null ? "" : localName) : name,
-                      age == null ? (localAge == null ? "" : localAge) : age,
-                      gender == null ? (localGender == null ? "" : localGender) : gender);
               } else {
                   // Write the profile to the UID captured before the read,
                   // rather than resolving FirebaseAuth's current UID again.
