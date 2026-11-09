@@ -26,6 +26,24 @@ public class RouteTrackingActivity extends Activity {
         {"स्थिती  %s\nअंतर  %.2f किमी\nकालावधी  %02d:%02d:%02d\nसरासरी वेग  %.1f किमी/तास\nGPS पॉइंट्स  %d","रेकॉर्डिंग सुरू","बंद","अद्याप GPS मार्ग जतन केलेले नाहीत.","जतन केलेले GPS मार्ग","दिनांक: %s\nअंतर: %.2f किमी\nकालावधी: %02d:%02d:%02d\nGPS पॉइंट्स: %d","मार्गाचा तपशील","बंद करा","जतन केलेला मार्ग हटवायचा?","हा मार्ग या डिव्हाइसमधून हटवला जाईल. ही कृती पूर्ववत करता येणार नाही.","रद्द करा","मार्ग डिव्हाइसमधून हटवला.","मार्ग हटवता आला नाही.","या मार्गात निर्यात करण्यासाठी GPS पॉइंट्स नाहीत.","GPX निर्यातीसाठी किमान दोन वैध GPS पॉइंट्स आवश्यक आहेत.","GPX फाइल तयार करता आली नाही.","मार्ग दाखवण्यासाठी पुरेसे GPS पॉइंट्स नाहीत","GPS ट्रॅकिंग सुरू करा","थांबवा आणि मार्ग जतन करा","जतन केलेले मार्ग पहा","मागे","GPS मार्ग ट्रॅकिंग","थांबवण्यासाठी सक्रिय GPS मार्ग नाही.","GPS ट्रॅकिंग सुरू झाले नाही. लोकेशन परवानगी तपासून पुन्हा प्रयत्न करा.","GPS ट्रॅकिंग थांबवता आले नाही. पुन्हा प्रयत्न करा.","GPS मार्ग ट्रॅकिंगसाठी लोकेशन परवानगी आवश्यक आहे.","मार्ग इतिहास वाचता आला नाही.","दिनांक: %s\nअंतर: %.2f किमी\nकालावधी: %02d:%02d:%02d\nGPS पॉइंट्स: %d","GPX शेअर करा","हटवा","GPX मार्ग शेअर करा"},
         {"स्थिति  %s\nदूरी  %.2f किमी\nअवधि  %02d:%02d:%02d\nऔसत गति  %.1f किमी/घंटा\nGPS पॉइंट  %d","रिकॉर्डिंग जारी","बंद","अभी तक कोई GPS मार्ग सेव नहीं है।","सेव किए गए GPS मार्ग","दिनांक: %s\nदूरी: %.2f किमी\nअवधि: %02d:%02d:%02d\nGPS पॉइंट: %d","मार्ग का विवरण","बंद करें","सेव किया गया मार्ग हटाएँ?","यह मार्ग इस डिवाइस से हट जाएगा। इसे वापस नहीं लाया जा सकता।","रद्द करें","मार्ग इस डिवाइस से हटा दिया गया।","मार्ग हटाया नहीं जा सका।","इस मार्ग में निर्यात के लिए GPS पॉइंट नहीं हैं।","GPX निर्यात के लिए कम से कम दो वैध GPS पॉइंट आवश्यक हैं।","GPX फ़ाइल नहीं बनाई जा सकी।","मार्ग दिखाने के लिए पर्याप्त GPS पॉइंट नहीं हैं","GPS ट्रैकिंग शुरू करें","रोकें और मार्ग सेव करें","सेव किए गए मार्ग देखें","वापस","GPS मार्ग ट्रैकिंग","रोकने के लिए कोई सक्रिय GPS मार्ग नहीं है।","GPS ट्रैकिंग शुरू नहीं हो सकी। लोकेशन अनुमति जाँचें और फिर प्रयास करें।","GPS ट्रैकिंग रोक नहीं सके। कृपया फिर प्रयास करें।","GPS मार्ग ट्रैकिंग के लिए लोकेशन अनुमति आवश्यक है।","मार्ग इतिहास नहीं पढ़ सके।","दिनांक: %s\nदूरी: %.2f किमी\nअवधि: %02d:%02d:%02d\nGPS पॉइंट: %d","GPX साझा करें","हटाएँ","GPX मार्ग साझा करें"}
     };
+    private String cloudTr(String key) {
+        boolean mr = "mr".equals(language);
+        boolean hi = "hi".equals(language);
+        switch (key) {
+            case "signIn": return mr ? "खाजगी Cloud मार्ग पाहण्यासाठी साइन इन करा." : hi ? "निजी Cloud मार्ग देखने के लिए साइन इन करें।" : cloudTr("signIn");
+            case "loading": return mr ? "खाजगी Cloud मार्ग लोड होत आहेत…" : hi ? "निजी Cloud मार्ग लोड हो रहे हैं…" : cloudTr("loading");
+            case "loadError": return mr ? "Cloud इतिहास लोड झाला नाही: " : hi ? "Cloud इतिहास लोड नहीं हुआ: " : "Cloud history: ";
+            case "title": return mr ? "खाजगी Cloud मार्ग इतिहास" : hi ? "निजी Cloud मार्ग इतिहास" : "Private Cloud Route History";
+            case "empty": return mr ? "Cloud मध्ये मार्ग उपलब्ध नाहीत. पुढील GPS मार्ग जतन करण्यापूर्वी खाजगी Cloud Backup सुरू करा." : hi ? "Cloud में कोई मार्ग नहीं है। अगला GPS मार्ग सेव करने से पहले निजी Cloud Backup चालू करें।" : cloudTr("empty");
+            case "details": return mr ? "Cloud मार्गाचा तपशील" : hi ? "Cloud मार्ग का विवरण" : cloudTr("details");
+            case "private": return mr ? "हा मार्ग फक्त या खात्यासाठी खाजगी आहे." : hi ? "यह मार्ग केवल इस खाते के लिए निजी है।" : cloudTr("private");
+            case "delete": return mr ? "Cloud मधून हटवा" : hi ? "Cloud से हटाएँ" : cloudTr("delete");
+            case "confirmTitle": return mr ? "Cloud मार्ग हटवायचा?" : hi ? "Cloud मार्ग हटाएँ?" : cloudTr("confirmTitle");
+            case "confirm": return mr ? "हा मार्ग तुमच्या खाजगी Cloud इतिहासातून कायमचा हटवला जाईल. मोबाईलमधील स्थानिक इतिहास तसाच राहील." : hi ? "यह मार्ग आपके निजी Cloud इतिहास से स्थायी रूप से हट जाएगा। फोन का स्थानीय इतिहास बना रहेगा।" : cloudTr("confirm");
+            default: return key;
+        }
+    }
+
     private String tr(int index) {
         int lang = "mr".equals(language) ? 1 : ("hi".equals(language) ? 2 : 0);
         return ROUTE_TEXT[lang][index];
@@ -110,12 +128,12 @@ public class RouteTrackingActivity extends Activity {
         StepFitCloud.loadPrivateRoutes((ok, routes, message) -> runOnUiThread(() -> {
             if (isFinishing()) return;
             if (!ok) {
-                Toast.makeText(this, "Cloud history: " + message, Toast.LENGTH_LONG).show();
+                Toast.makeText(this, cloudTr("loadError") + message, Toast.LENGTH_LONG).show();
                 return;
             }
             if (routes == null || routes.isEmpty()) {
                 new AlertDialog.Builder(this)
-                    .setTitle("Private Cloud History")
+                    .setTitle(cloudTr("title"))
                     .setMessage("No cloud routes found. Turn on private cloud backup before saving a future GPS route.")
                     .setPositiveButton(tr(7), null).show();
                 return;
