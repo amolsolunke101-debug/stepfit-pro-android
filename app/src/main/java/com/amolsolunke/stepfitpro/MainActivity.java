@@ -16,6 +16,7 @@ import android.widget.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.GoogleAuthProvider;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
@@ -287,10 +288,39 @@ public class MainActivity extends Activity {
             if (result.isSuccessful()) {
                 openMainApp();
             } else {
-                String message = result.getException() == null ? "Sign-in failed." : result.getException().getLocalizedMessage();
-                Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+                Toast.makeText(this, authErrorMessage(result.getException()), Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    // Translate common Firebase configuration/authentication failures into
+    // actionable messages. Provider enablement is a Firebase Console setting;
+    // it cannot be repaired by changing the APK alone.
+    private String authErrorMessage(Exception error) {
+        if (error instanceof FirebaseAuthException) {
+            String code = ((FirebaseAuthException) error).getErrorCode();
+            if ("ERROR_OPERATION_NOT_ALLOWED".equals(code)) {
+                return "Email/password sign-in is disabled for this Firebase project. The project owner must enable Email/Password in Firebase Console > Authentication > Sign-in method. You can still use Continue offline.";
+            }
+            if ("ERROR_EMAIL_ALREADY_IN_USE".equals(code)) {
+                return "This email already has an account. Choose Sign in with email instead.";
+            }
+            if ("ERROR_INVALID_EMAIL".equals(code)) {
+                return "Please enter a valid email address.";
+            }
+            if ("ERROR_WEAK_PASSWORD".equals(code)) {
+                return "Choose a stronger password with at least 6 characters.";
+            }
+            if ("ERROR_USER_NOT_FOUND".equals(code) || "ERROR_WRONG_PASSWORD".equals(code)
+                    || "ERROR_INVALID_CREDENTIAL".equals(code)) {
+                return "Email or password is incorrect. Check the details or create a free account.";
+            }
+            if ("ERROR_NETWORK_REQUEST_FAILED".equals(code)) {
+                return "Could not connect. Check your internet connection and try again.";
+            }
+        }
+        return error == null || error.getLocalizedMessage() == null
+                ? "Sign-in failed. Please try again." : error.getLocalizedMessage();
     }
 
     @Override
@@ -318,16 +348,26 @@ public class MainActivity extends Activity {
             return;
         }
         if (requestCode == 1002 && googleSignInClient != null) {
+            if (data == null || resultCode != RESULT_OK) {
+                Toast.makeText(this, "Google sign-in was cancelled. You can try again or continue offline.", Toast.LENGTH_LONG).show();
+                return;
+            }
             try {
                 Task<com.google.android.gms.auth.api.signin.GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
                 com.google.android.gms.auth.api.signin.GoogleSignInAccount account = task.getResult(ApiException.class);
+                if (account == null || account.getIdToken() == null) {
+                    Toast.makeText(this, "Google sign-in token is missing. Check the Firebase/Google OAuth configuration.", Toast.LENGTH_LONG).show();
+                    return;
+                }
                 AuthCredential credential = GoogleAuthProvider.getCredential(account.getIdToken(), null);
                 auth.signInWithCredential(credential).addOnCompleteListener(this, result -> {
                     if (result.isSuccessful()) openMainApp();
-                    else Toast.makeText(this, "Google sign-in failed. Please try email sign-in.", Toast.LENGTH_LONG).show();
+                    else Toast.makeText(this, authErrorMessage(result.getException()), Toast.LENGTH_LONG).show();
                 });
+            } catch (ApiException e) {
+                Toast.makeText(this, "Google sign-in could not complete (code " + e.getStatusCode() + "). Check the app SHA-1 and OAuth client configuration.", Toast.LENGTH_LONG).show();
             } catch (Exception e) {
-                Toast.makeText(this, "Google sign-in cancelled or unavailable.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Google sign-in is unavailable. You can still use Continue offline.", Toast.LENGTH_LONG).show();
             }
         }
     }
