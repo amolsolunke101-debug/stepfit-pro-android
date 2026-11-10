@@ -12,6 +12,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.*;
 import android.view.*;
 import android.widget.*;
+import android.util.Log;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import com.google.firebase.auth.FirebaseAuth;
@@ -135,7 +136,8 @@ public class MainActivity extends Activity {
                 .requestEmail()
                 .build();
             googleSignInClient = GoogleSignIn.getClient(this, options);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            Log.e("StepFitGoogleSignIn", "Google Sign-In client initialization failed", e);
             googleSignInClient = null;
         }
 
@@ -192,7 +194,12 @@ public class MainActivity extends Activity {
             if (googleSignInClient == null) {
                 Toast.makeText(this, "Google sign-in is not configured yet.", Toast.LENGTH_LONG).show();
             } else {
-                startActivityForResult(googleSignInClient.getSignInIntent(), 1002);
+                try {
+                    startActivityForResult(googleSignInClient.getSignInIntent(), 2002);
+                } catch (Exception e) {
+                    Log.e("StepFitGoogleSignIn", "Could not launch Google account chooser", e);
+                    Toast.makeText(this, "Could not open Google sign-in. Check Google Play Services.", Toast.LENGTH_LONG).show();
+                }
             }
         });
         screen.addView(google, lp(-1, 52));
@@ -249,17 +256,37 @@ public class MainActivity extends Activity {
             if (content != null) showPage(4);
             return;
         }
-        if (requestCode == 1002 && googleSignInClient != null) {
+        if (requestCode == 2002) {
+            if (resultCode != RESULT_OK || data == null) {
+                Log.w("StepFitGoogleSignIn", "Google account chooser closed. resultCode=" + resultCode);
+                Toast.makeText(this, "Google sign-in was cancelled. Please try again.", Toast.LENGTH_LONG).show();
+                return;
+            }
             try {
                 Task<com.google.android.gms.auth.api.signin.GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
                 com.google.android.gms.auth.api.signin.GoogleSignInAccount account = task.getResult(ApiException.class);
+                if (account == null || account.getIdToken() == null || account.getIdToken().isEmpty()) {
+                    Log.e("StepFitGoogleSignIn", "Google account returned no ID token. Check the Web OAuth client ID.");
+                    Toast.makeText(this, "Google sign-in setup error: ID token missing. Check Firebase Web client configuration.", Toast.LENGTH_LONG).show();
+                    return;
+                }
                 AuthCredential credential = GoogleAuthProvider.getCredential(account.getIdToken(), null);
                 auth.signInWithCredential(credential).addOnCompleteListener(this, result -> {
-                    if (result.isSuccessful()) openMainApp();
-                    else Toast.makeText(this, "Google sign-in failed. Please try email sign-in.", Toast.LENGTH_LONG).show();
+                    if (result.isSuccessful()) {
+                        openMainApp();
+                    } else {
+                        Exception error = result.getException();
+                        Log.e("StepFitGoogleSignIn", "Firebase credential sign-in failed", error);
+                        String message = error == null ? "Firebase sign-in failed." : error.getLocalizedMessage();
+                        Toast.makeText(this, "Firebase Google sign-in failed: " + message, Toast.LENGTH_LONG).show();
+                    }
                 });
+            } catch (ApiException e) {
+                Log.e("StepFitGoogleSignIn", "Google account selection failed. Status code=" + e.getStatusCode(), e);
+                Toast.makeText(this, "Google sign-in error code: " + e.getStatusCode() + ". Share this code for diagnosis.", Toast.LENGTH_LONG).show();
             } catch (Exception e) {
-                Toast.makeText(this, "Google sign-in cancelled or unavailable.", Toast.LENGTH_LONG).show();
+                Log.e("StepFitGoogleSignIn", "Unexpected Google sign-in error", e);
+                Toast.makeText(this, "Google sign-in error: " + e.getClass().getSimpleName() + ". Check the app log.", Toast.LENGTH_LONG).show();
             }
         }
     }
