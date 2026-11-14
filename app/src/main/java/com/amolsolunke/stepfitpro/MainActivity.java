@@ -66,7 +66,7 @@ public class MainActivity extends Activity {
         "Highest day","About StepFit PRO","Offline step counter",
         "Choose language","Choose theme","Settings saved",
         "Enter goal (0 = no goal)","Sensor permission needed",
-        "Permission required"
+        "Permission required","Enable step counting"
       },
       {
         "मुख्यपृष्ठ","प्रगती","इतिहास","आलेख","सेटिंग्ज","माहिती",
@@ -80,7 +80,7 @@ public class MainActivity extends Activity {
         "StepFit PRO बद्दल","ऑफलाइन स्टेप काउंटर",
         "भाषा निवडा","थीम निवडा","सेटिंग्ज जतन झाल्या",
         "लक्ष्य भरा (० = लक्ष्य नाही)","सेन्सर परवानगी आवश्यक",
-        "परवानगी आवश्यक"
+        "परवानगी आवश्यक","स्टेप मोजणी सुरू करा"
       },
       {
         "Inicio","Progreso","Historial","Gráficos","Ajustes",
@@ -94,7 +94,7 @@ public class MainActivity extends Activity {
         "Acerca de StepFit PRO","Contador sin conexión",
         "Elegir idioma","Elegir tema","Ajustes guardados",
         "Meta (0 = sin meta)","Permiso del sensor necesario",
-        "Permiso necesario"
+        "Permiso necesario","Activar el contador de pasos"
       }
     };
 
@@ -124,6 +124,7 @@ public class MainActivity extends Activity {
         // Step counting remains independent of cloud login.
         if (Build.VERSION.SDK_INT >= 29 &&
             checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
+            prefs.edit().putBoolean("activity_permission_requested", true).apply();
             requestPermissions(new String[]{Manifest.permission.ACTIVITY_RECOGNITION}, 1001);
         } else {
             requestNotificationPermissionIfNeeded();
@@ -294,6 +295,35 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void enableStepCounting() {
+        if (Build.VERSION.SDK_INT >= 29 &&
+                checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
+            if (prefs.getBoolean("activity_permission_requested", false)
+                    && !shouldShowRequestPermissionRationale(Manifest.permission.ACTIVITY_RECOGNITION)) {
+                new AlertDialog.Builder(this)
+                    .setTitle(t(38))
+                    .setMessage("Allow Activity Recognition permission in app settings to count steps.")
+                    .setNegativeButton(t(14), null)
+                    .setPositiveButton("Open app settings", (dialog, which) -> {
+                        Intent settingsIntent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                        settingsIntent.setData(android.net.Uri.parse("package:" + getPackageName()));
+                        startActivity(settingsIntent);
+                    })
+                    .show();
+            } else {
+                prefs.edit().putBoolean("activity_permission_requested", true).apply();
+                requestPermissions(new String[]{Manifest.permission.ACTIVITY_RECOGNITION}, 1001);
+            }
+            return;
+        }
+
+        startStepService();
+        Toast.makeText(this,
+            "Step counter service restarted. If steps remain at zero, this phone may not have a step sensor.",
+            Toast.LENGTH_LONG).show();
+        showPage(page);
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -422,7 +452,8 @@ public class MainActivity extends Activity {
         bar.setMax(100); bar.setProgress(percent); content.addView(bar, lp(-1, 22));
         content.addView(text(goal <= 0 ? t(16) : percent + "% " + t(26), 17, accent, true));
 
-        boolean sensorAvailable = prefs.getBoolean("sensor_available", false);
+        boolean sensorAvailable = prefs.getBoolean("sensor_available", false)
+                && prefs.getBoolean("sensor_registered", false);
         String status = sensorAvailable ? t(17) : t(18);
         if (Build.VERSION.SDK_INT >= 29 &&
                 checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
@@ -535,6 +566,9 @@ public class MainActivity extends Activity {
         Button strideButton = new Button(this); strideButton.setText(t(21));
         strideButton.setOnClickListener(v -> editDecimal(t(21), "stride", 75f));
         content.addView(strideButton, lp(-1, 50));
+        Button sensorButton = new Button(this); sensorButton.setText(t(38));
+        sensorButton.setOnClickListener(v -> enableStepCounting());
+        content.addView(sensorButton, lp(-1, 50));
         Button languageButton = new Button(this); languageButton.setText(t(11));
         languageButton.setOnClickListener(v -> chooseLanguage()); content.addView(languageButton, lp(-1, 50));
         Button themeButton = new Button(this); themeButton.setText(t(12));
