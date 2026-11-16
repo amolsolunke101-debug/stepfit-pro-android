@@ -34,6 +34,7 @@ public class MainActivity extends Activity {
     private int bg = Color.rgb(10, 18, 38);
     private int card = Color.rgb(27, 42, 68);
     private boolean receiverRegistered = false;
+    private boolean activityPermissionGranted = false;
     private FirebaseAuth auth;
     private GoogleSignInClient googleSignInClient;
     private EditText emailInput, passwordInput;
@@ -122,8 +123,9 @@ public class MainActivity extends Activity {
 
         // Request activity recognition once, before starting the health foreground service.
         // Step counting remains independent of cloud login.
-        if (Build.VERSION.SDK_INT >= 29 &&
-            checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
+        activityPermissionGranted = Build.VERSION.SDK_INT < 29 ||
+            checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED;
+        if (!activityPermissionGranted) {
             prefs.edit().putBoolean("activity_permission_requested", true).apply();
             requestPermissions(new String[]{Manifest.permission.ACTIVITY_RECOGNITION}, 1001);
         } else {
@@ -327,6 +329,23 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+
+        // A user may grant Activity Recognition in Android app settings after
+        // permanently denying the runtime prompt. Restart counting as soon as
+        // the app returns, without requiring a second tap on the Settings action.
+        boolean permissionNowGranted = Build.VERSION.SDK_INT < 29 ||
+            checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED;
+        if (permissionNowGranted && !activityPermissionGranted) {
+            activityPermissionGranted = true;
+            startStepService();
+            requestNotificationPermissionIfNeeded();
+        } else if (!permissionNowGranted && activityPermissionGranted) {
+            activityPermissionGranted = false;
+            stopService(new Intent(this, StepCounterService.class));
+            prefs.edit().putBoolean("sensor_available", false)
+                .putBoolean("sensor_registered", false).apply();
+        }
+
         IntentFilter filter = new IntentFilter("com.amolsolunke.stepfitpro.STEPS_UPDATED");
         if (Build.VERSION.SDK_INT >= 33) {
             registerReceiver(stepsReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
@@ -691,10 +710,13 @@ public class MainActivity extends Activity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == 1001) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                startStepService();
+                boolean permissionWasAlreadyHandled = activityPermissionGranted;
+                activityPermissionGranted = true;
+                if (!permissionWasAlreadyHandled) startStepService();
                 showPage(page);
                 requestNotificationPermissionIfNeeded();
             } else {
+                activityPermissionGranted = false;
                 Toast.makeText(this, t(36), Toast.LENGTH_LONG).show();
             }
         } else if (requestCode == 1002) {
