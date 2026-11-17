@@ -26,6 +26,7 @@ import com.google.android.gms.tasks.Task;
 public class MainActivity extends Activity {
     private SharedPreferences prefs;
     private LinearLayout root, content, nav;
+    private Button[] navButtons;
     private TextView stepsView, distanceView, caloriesView, goalView, progressView, statusView;
     private int page = 0;
     private String language = "en";
@@ -365,12 +366,17 @@ public class MainActivity extends Activity {
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         nav = row();
         String[] names = {t(0), t(1), t(2), t(4)};
+        navButtons = new Button[names.length];
         for (int i = 0; i < names.length; i++) {
             final int selected = i;
-            Button b = new Button(this); b.setText(names[i]); b.setTextSize(10);
-            b.setOnClickListener(v -> {
-                if (selected == 3) showPage(4); else showPage(selected);
-            });
+            Button b = new Button(this);
+            b.setText(names[i]);
+            b.setTextSize(10);
+            b.setAllCaps(false);
+            b.setMinWidth(0);
+            b.setPadding(dp(3), 0, dp(3), 0);
+            b.setOnClickListener(v -> showPage(selected == 3 ? 4 : selected));
+            navButtons[i] = b;
             nav.addView(b, new LinearLayout.LayoutParams(0, dp(52), 1));
         }
         root.addView(nav, lp(-1, 58));
@@ -387,13 +393,32 @@ public class MainActivity extends Activity {
 
     private void showPage(int selectedPage) {
         if (content == null) return;
-        page = selectedPage; content.removeAllViews();
+        page = selectedPage;
+        content.removeAllViews();
+        updateNavSelection();
         switch (page) {
             case 0: showHome(); break;
             case 1: showProgress(); break;
             case 2: showHistory(); break;
             case 3: showAbout(); break;
             default: showSettings(); break;
+        }
+    }
+
+    private void updateNavSelection() {
+        if (navButtons == null) return;
+
+        // The About page is opened from Settings, so keep Settings highlighted there.
+        int selectedIndex = page >= 0 && page <= 2 ? page : 3;
+        for (int i = 0; i < navButtons.length; i++) {
+            Button button = navButtons[i];
+            boolean selected = i == selectedIndex;
+            button.setBackground(shape(selected ? accent : card, 12));
+            button.setTextColor(selected ? bg : Color.WHITE);
+            button.setSelected(selected);
+            button.setContentDescription(button.getText().toString()
+                + (selected ? ", selected" : ", tab"));
+            button.setElevation(selected ? dp(2) : 0);
         }
     }
 
