@@ -4,7 +4,7 @@ StepFit PRO is an Android step counter with offline step tracking, optional acco
 
 ## Build
 
-The GitHub Actions workflow builds a debug APK on pushes to `main` and uploads it as the `StepFit-PRO-APK` artifact.
+The GitHub Actions workflow builds a debug APK on pushes to `main` or `fix/**` branches and on pull requests targeting `main`, then uploads it as the `StepFit-PRO-APK` artifact.
 
 - Open the repository's **Actions** tab.
 - Select the latest successful **Build StepFit PRO APK** run.
