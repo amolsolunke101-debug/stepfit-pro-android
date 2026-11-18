@@ -240,12 +240,9 @@ public class MainActivity extends Activity {
             android.net.Uri uri = data.getData();
             try { getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (Exception ignored) {}
             prefs.edit().putString("profile_photo_uri", uri.toString()).apply();
-            if (auth != null && auth.getCurrentUser() != null) {
-                StepFitCloud.uploadProfilePhoto(uri, (ok, message) -> runOnUiThread(() ->
-                    Toast.makeText(this, message, Toast.LENGTH_LONG).show()));
-            } else {
-                Toast.makeText(this, "Profile photo saved on this device. Sign in to sync it.", Toast.LENGTH_SHORT).show();
-            }
+            Toast.makeText(this,
+                "Profile photo saved on this device. Cloud photo upload is disabled to avoid Storage billing.",
+                Toast.LENGTH_LONG).show();
             if (content != null) showPage(4);
             return;
         }
