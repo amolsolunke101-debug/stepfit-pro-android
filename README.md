@@ -12,17 +12,17 @@ The GitHub Actions workflow builds a debug APK on pushes to `main` and uploads i
 
 ## Firebase setup
 
-The app uses Firebase Authentication, Cloud Firestore, and Cloud Storage. Configure the Android app in Firebase and keep the matching `google-services.json` in `app/`. Do not commit service-account credentials or private keys.
+The app uses Firebase Authentication and Cloud Firestore. It does not use Firebase Cloud Storage, so profile-photo selection stays local to the device. Configure the Android app in Firebase and keep the matching `google-services.json` in `app/`. Do not commit service-account credentials or private keys.
 
 ### Deploy security rules
 
 Install the Firebase CLI on a trusted computer and sign in to the Firebase account that owns this project. From the repository root, deploy the rules:
 
 ```sh
-firebase deploy --only firestore:rules,storage
+firebase deploy --only firestore:rules
 ```
 
-Confirm the selected Firebase project is the intended StepFit PRO project before deploying. The repository files `firestore.rules` and `storage.rules` are source files; a GitHub commit does **not** deploy them automatically. Review the rules in the Firebase Console after deployment.
+Confirm the selected Firebase project is the intended StepFit PRO project before deploying. The `firestore.rules` file is used by this app; `storage.rules` is retained as an unused template and is not deployed by this command. A GitHub commit does **not** deploy security rules automatically. Review the Firestore rules in the Firebase Console after deployment.
 
 ### Grant or revoke the protected admin claim
 
@@ -51,19 +51,20 @@ GOOGLE_APPLICATION_CREDENTIALS="/secure/path/service-account.json" node scripts/
 
 Replace the example path and UID with the actual values. Never send the service-account JSON file to anyone or upload it to GitHub. The administrator must refresh their Firebase ID token (sign out and sign in again is the simplest option) before the app sees the new claim.
 
-**Important:** The admin screen checks the custom claim, and Firestore/Storage rules enforce access on cloud data. Assign admin access only to a trusted owner. Blocking a user prevents access to protected cloud data through the rules; it does not delete the Firebase Authentication account. The offline step counter remains a local device feature.
+**Important:** The admin screen checks the custom claim, and Firestore rules enforce access to cloud data. Assign admin access only to a trusted owner. Blocking a user prevents access to protected cloud data through the rules; it does not delete the Firebase Authentication account. The offline step counter remains a local device feature.
 
 ## Free-plan and privacy notes
 
 - Step counting works locally and does not require an account.
-- Cloud sign-in, profile sync, community, and photo upload require internet and depend on Firebase quotas and current Firebase plan limits.
+- Email/Google sign-in, profile sync, and community features require internet and use Firebase Authentication/Firestore quotas; they are not unlimited.
+- Profile-photo selection is saved on the device only. This build intentionally does not upload photos to Firebase Cloud Storage.
 - No SMS OTP flow is required by the current sign-in design.
 - Do not describe cloud usage as unlimited or guaranteed free; check the Firebase Console for current usage and plan terms.
-- Profile images and community data are account-linked. Review and deploy the security rules before inviting public users.
+- Review and deploy Firestore security rules before inviting public users.
 
 ## Current limitations to verify before public release
 
-- Firebase security rules must be deployed and tested in the Firebase project.
+- Firestore security rules must be deployed and tested in the Firebase project; Cloud Storage is not used by this build.
 - The owner must securely assign the admin custom claim before the Admin Panel can be used.
 - Route history is currently stored locally on the device; it is not a cloud-synced route archive.
 - Challenge participation and basic personal progress are present; a verified, multi-user challenge leaderboard with server-trusted scoring is still future work.
