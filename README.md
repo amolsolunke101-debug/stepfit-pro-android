@@ -16,13 +16,13 @@ The app uses Firebase Authentication and Cloud Firestore. It does not use Fireba
 
 ### Deploy security rules
 
-Install the Firebase CLI on a trusted computer and sign in to the Firebase account that owns this project. From the repository root, deploy the rules:
+Install the Firebase CLI on a trusted computer and sign in to the Firebase account that owns this project. This repository includes a `firebase.json` that maps the Firestore rules file. From the repository root, replace the placeholder with the exact Firebase project ID and deploy only the Firestore rules:
 
 ```sh
-firebase deploy --only firestore:rules
+firebase deploy --only firestore:rules --project YOUR_FIREBASE_PROJECT_ID
 ```
 
-Confirm the selected Firebase project is the intended StepFit PRO project before deploying. The `firestore.rules` file is used by this app; `storage.rules` is retained as an unused template and is not deployed by this command. A GitHub commit does **not** deploy security rules automatically. Review the Firestore rules in the Firebase Console after deployment.
+Do not run this command against a production project until its owner has explicitly approved the deployment. The `firestore.rules` file is used by this app; `storage.rules` is retained as an unused template and is not deployed by this command. A GitHub commit does **not** deploy security rules automatically. Review the Firestore rules in the Firebase Console after an authorized deployment.
 
 ### Grant or revoke the protected admin claim
 
