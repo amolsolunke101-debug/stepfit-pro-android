@@ -22,7 +22,7 @@ Install the Firebase CLI on a trusted computer and sign in to the Firebase accou
 firebase deploy --only firestore:rules --project YOUR_FIREBASE_PROJECT_ID
 ```
 
-Do not run this command against a production project until its owner has explicitly approved the deployment. The `firestore.rules` file is used by this app; `storage.rules` is retained as an unused template and is not deployed by this command. A GitHub commit does **not** deploy security rules automatically. Review the Firestore rules in the Firebase Console after an authorized deployment.
+Do not run this command against a production project until its owner has explicitly approved the deployment. The current Firestore rules are still under security review; do not use them for a public rollout until the full ruleset has been reviewed and its emulator tests have passed. The `firestore.rules` file is used by this app; `storage.rules` is retained as an unused template and is not deployed by this command. A GitHub commit does **not** deploy security rules automatically. Review the Firestore rules in the Firebase Console after an authorized deployment.
 
 ### Grant or revoke the protected admin claim
 
