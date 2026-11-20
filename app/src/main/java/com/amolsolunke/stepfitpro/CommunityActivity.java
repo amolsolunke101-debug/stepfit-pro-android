@@ -174,13 +174,12 @@ public class CommunityActivity extends Activity {
                     + "Your status: " + (joined ? "Joined" : "Not joined") + "\n"
                     + "Your steps today: " + todaySteps + "\n"
                     + "Today's progress against target: " + percent + "%\n\n"
-                    + "Note: This progress uses steps stored on this device. It is not a verified multi-user leaderboard.";
+                    + "Score submission is temporarily disabled because device-reported steps cannot be securely verified. You can still join and track your personal progress on this device.";
                 AlertDialog.Builder dialog = new AlertDialog.Builder(this)
                     .setTitle(name == null ? "Challenge" : name)
                     .setMessage(message)
-                    .setPositiveButton(joined ? "Submit today's steps" : "Join challenge", (d, w) -> {
-                        if (joined) submitChallengeProgress(challengeId);
-                        else StepFitCloud.joinChallenge(challengeId, (ok, messageText) -> runOnUiThread(() -> {
+                    .setPositiveButton(joined ? "Close" : "Join challenge", (d, w) -> {
+                        if (!joined) StepFitCloud.joinChallenge(challengeId, (ok, messageText) -> runOnUiThread(() -> {
                             msg(messageText);
                             if (ok) showChallengeDetails(challengeId);
                         }));
@@ -199,23 +198,6 @@ public class CommunityActivity extends Activity {
     private String todayKey() {
         return new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
             .format(new java.util.Date());
-    }
-
-    // Scores are submitted by each participant's device; they are not server-verified.
-    private void submitChallengeProgress(String challengeId) {
-        String uid = StepFitCloud.uid();
-        if (uid == null) { msg("Sign in first."); return; }
-        long steps = getLocalTodaySteps();
-        String day = todayKey();
-        java.util.Map<String,Object> data = new java.util.HashMap<>();
-        data.put("uid", uid);
-        data.put("day", day);
-        data.put("steps", steps);
-        data.put("updatedAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
-        FirebaseFirestore.getInstance().collection("challenges").document(challengeId)
-            .collection("dailyProgress").document(uid + "_" + day).set(data)
-            .addOnSuccessListener(v -> msg("Today's device step count submitted: " + steps))
-            .addOnFailureListener(e -> msg("Could not submit progress: " + e.getLocalizedMessage()));
     }
 
     private void showChallengeLeaderboard(String challengeId) {
@@ -240,7 +222,7 @@ public class CommunityActivity extends Activity {
                         .append(" — ").append(steps == null ? 0 : steps).append(" steps\n");
                 }
                 new AlertDialog.Builder(this).setTitle("Today's leaderboard")
-                    .setMessage(board.toString() + "\nScores are self-reported from devices and are not verified.")
+                    .setMessage(board.toString() + "\nPreviously submitted device scores are unverified. New score submission is disabled until trusted validation is available.")
                     .setPositiveButton("Close", null).show();
             })
             .addOnFailureListener(e -> msg("Could not load leaderboard: " + e.getLocalizedMessage()));
