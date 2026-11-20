@@ -183,9 +183,10 @@ public class CommunityActivity extends Activity {
                             msg(messageText);
                             if (ok) showChallengeDetails(challengeId);
                         }));
-                    })
-                    .setNeutralButton("Leaderboard", (d, w) -> showChallengeLeaderboard(challengeId))
-                    .setNegativeButton("Close", null);
+                    });
+                // Firestore rules allow leaderboard reads only to challenge participants.
+                if (joined) dialog.setNeutralButton("Leaderboard", (d, w) -> showChallengeLeaderboard(challengeId));
+                dialog.setNegativeButton("Close", null);
                 dialog.show();
             }).addOnFailureListener(e -> msg("Could not load challenge: " + e.getLocalizedMessage()));
     }
