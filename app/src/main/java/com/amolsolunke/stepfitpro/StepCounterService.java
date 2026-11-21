@@ -176,6 +176,16 @@ public class StepCounterService extends Service implements SensorEventListener {
             sensorManager.unregisterListener(this);
             boolean registered = sensorManager.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_NORMAL);
             prefs.edit().putBoolean("sensor_available", true).putBoolean("sensor_registered", registered).apply();
+        } else {
+            // A sticky service restart can happen after permission revocation or on a
+            // device without a step-counter sensor. Do not leave stale "available"
+            // flags from an earlier run visible in the dashboard.
+            if (sensorManager != null) sensorManager.unregisterListener(this);
+            prefs.edit()
+                    .putBoolean("sensor_available", stepSensor != null && permissionGranted)
+                    .putBoolean("sensor_registered", false)
+                    .apply();
+            broadcastUpdate();
         }
         return START_STICKY;
     }
