@@ -96,17 +96,11 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/challenges/$(challengeId)).data.participantUids.hasAny([request.auth.uid]);
       }
 
+      // A phone can change its local step count, so client-submitted challenge
+      // scores are not trustworthy. Until a trusted validator exists, only an
+      // administrator may write leaderboard progress.
       allow read: if isParticipant();
-      allow create, update: if isParticipant()
-        && request.resource.data.keys().hasOnly(['uid', 'day', 'steps', 'updatedAt'])
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.day is string
-        && request.resource.data.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
-        && entryId == request.auth.uid + '_' + request.resource.data.day
-        && request.resource.data.steps is int
-        && request.resource.data.steps >= 0
-        && request.resource.data.updatedAt == request.time;
-      allow delete: if admin();
+      allow write: if admin();
     }
 
     match /leaderboards/{boardId} {
