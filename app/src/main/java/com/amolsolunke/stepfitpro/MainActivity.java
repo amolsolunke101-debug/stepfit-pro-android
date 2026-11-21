@@ -34,6 +34,7 @@ public class MainActivity extends Activity {
     private int bg = Color.rgb(10, 18, 38);
     private int card = Color.rgb(27, 42, 68);
     private boolean receiverRegistered = false;
+    private boolean activityPermissionGranted = false;
     private FirebaseAuth auth;
     private GoogleSignInClient googleSignInClient;
     private EditText emailInput, passwordInput;
@@ -66,7 +67,7 @@ public class MainActivity extends Activity {
         "Highest day","About StepFit PRO","Offline step counter",
         "Choose language","Choose theme","Settings saved",
         "Enter goal (0 = no goal)","Sensor permission needed",
-        "Permission required"
+        "Permission required","Enable step counting"
       },
       {
         "मुख्यपृष्ठ","प्रगती","इतिहास","आलेख","सेटिंग्ज","माहिती",
@@ -80,7 +81,7 @@ public class MainActivity extends Activity {
         "StepFit PRO बद्दल","ऑफलाइन स्टेप काउंटर",
         "भाषा निवडा","थीम निवडा","सेटिंग्ज जतन झाल्या",
         "लक्ष्य भरा (० = लक्ष्य नाही)","सेन्सर परवानगी आवश्यक",
-        "परवानगी आवश्यक"
+        "परवानगी आवश्यक","स्टेप मोजणी सुरू करा"
       },
       {
         "Inicio","Progreso","Historial","Gráficos","Ajustes",
@@ -94,7 +95,7 @@ public class MainActivity extends Activity {
         "Acerca de StepFit PRO","Contador sin conexión",
         "Elegir idioma","Elegir tema","Ajustes guardados",
         "Meta (0 = sin meta)","Permiso del sensor necesario",
-        "Permiso necesario"
+        "Permiso necesario","Activar el contador de pasos"
       }
     };
 
@@ -122,8 +123,10 @@ public class MainActivity extends Activity {
 
         // Request activity recognition once, before starting the health foreground service.
         // Step counting remains independent of cloud login.
-        if (Build.VERSION.SDK_INT >= 29 &&
-            checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
+        activityPermissionGranted = Build.VERSION.SDK_INT < 29 ||
+            checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED;
+        if (!activityPermissionGranted) {
+            prefs.edit().putBoolean("activity_permission_requested", true).apply();
             requestPermissions(new String[]{Manifest.permission.ACTIVITY_RECOGNITION}, 1001);
         } else {
             requestNotificationPermissionIfNeeded();
@@ -294,9 +297,55 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void enableStepCounting() {
+        if (Build.VERSION.SDK_INT >= 29 &&
+                checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
+            if (prefs.getBoolean("activity_permission_requested", false)
+                    && !shouldShowRequestPermissionRationale(Manifest.permission.ACTIVITY_RECOGNITION)) {
+                new AlertDialog.Builder(this)
+                    .setTitle(t(38))
+                    .setMessage("Allow Activity Recognition permission in app settings to count steps.")
+                    .setNegativeButton(t(14), null)
+                    .setPositiveButton("Open app settings", (dialog, which) -> {
+                        Intent settingsIntent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                        settingsIntent.setData(android.net.Uri.parse("package:" + getPackageName()));
+                        startActivity(settingsIntent);
+                    })
+                    .show();
+            } else {
+                prefs.edit().putBoolean("activity_permission_requested", true).apply();
+                requestPermissions(new String[]{Manifest.permission.ACTIVITY_RECOGNITION}, 1001);
+            }
+            return;
+        }
+
+        startStepService();
+        Toast.makeText(this,
+            "Step counter service restarted. If steps remain at zero, this phone may not have a step sensor.",
+            Toast.LENGTH_LONG).show();
+        showPage(page);
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
+
+        // A user may grant Activity Recognition in Android app settings after
+        // permanently denying the runtime prompt. Restart counting as soon as
+        // the app returns, without requiring a second tap on the Settings action.
+        boolean permissionNowGranted = Build.VERSION.SDK_INT < 29 ||
+            checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED;
+        if (permissionNowGranted && !activityPermissionGranted) {
+            activityPermissionGranted = true;
+            startStepService();
+            requestNotificationPermissionIfNeeded();
+        } else if (!permissionNowGranted && activityPermissionGranted) {
+            activityPermissionGranted = false;
+            stopService(new Intent(this, StepCounterService.class));
+            prefs.edit().putBoolean("sensor_available", false)
+                .putBoolean("sensor_registered", false).apply();
+        }
+
         IntentFilter filter = new IntentFilter("com.amolsolunke.stepfitpro.STEPS_UPDATED");
         if (Build.VERSION.SDK_INT >= 33) {
             registerReceiver(stepsReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
@@ -397,17 +446,16 @@ public class MainActivity extends Activity {
         }
     }
 
-    private int getSteps() {
-        // SharedPreferences may contain an Integer from an older app version
-        // or a Long from the updated service. Read either type safely.
+    private long getSteps() {
+        // Read both legacy Integer and current Long preferences without
+        // imposing an artificial Integer.MAX_VALUE ceiling on daily steps.
         Object stored = prefs.getAll().get("today_steps");
         long value = stored instanceof Number ? ((Number) stored).longValue() : 0L;
-        if (value < 0) value = 0;
-        return value > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) value;
+        return Math.max(0L, value);
     }
 
     private void showHome() {
-        int steps = getSteps();
+        long steps = getSteps();
         int goal = prefs.getInt("goal", 0);
         float weight = prefs.getFloat("weight", 70f);
         float stride = prefs.getFloat("stride", 75f);
@@ -422,7 +470,8 @@ public class MainActivity extends Activity {
         bar.setMax(100); bar.setProgress(percent); content.addView(bar, lp(-1, 22));
         content.addView(text(goal <= 0 ? t(16) : percent + "% " + t(26), 17, accent, true));
 
-        boolean sensorAvailable = prefs.getBoolean("sensor_available", false);
+        boolean sensorAvailable = prefs.getBoolean("sensor_available", false)
+                && prefs.getBoolean("sensor_registered", false);
         String status = sensorAvailable ? t(17) : t(18);
         if (Build.VERSION.SDK_INT >= 29 &&
                 checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
@@ -435,16 +484,17 @@ public class MainActivity extends Activity {
     }
 
     private void showProgress() {
-        int steps = getSteps(); int goal = prefs.getInt("goal", 0);
+        long steps = getSteps(); int goal = prefs.getInt("goal", 0);
         addCard(t(27), String.format(Locale.US, "%,d", steps));
-        addCard(t(26), goal <= 0 ? "No goal set" : Math.min(100, steps * 100 / Math.max(1, goal)) + "%");
-        int total = 0, highest = 0;
+        addCard(t(26), goal <= 0 ? "No goal set" : Math.min(100, (int) (steps * 100.0 / goal)) + "%");
+        long total = 0L, highest = 0L;
         for (int i = 0; i < 7; i++) {
             String date = dateMinus(i);
             long value = prefs.getLong("history_" + date, 0);
             if (i == 0) value = steps;
-            int count = (int) Math.max(0, Math.min(Integer.MAX_VALUE, value));
-            total += count; highest = Math.max(highest, count);
+            long count = Math.max(0L, value);
+            total = total > Long.MAX_VALUE - count ? Long.MAX_VALUE : total + count;
+            highest = Math.max(highest, count);
             TextView day = text(date + "    " + count + " steps", 14, Color.WHITE, false);
             day.setBackground(shape(card, 12)); content.addView(day, lp(-1, 44));
         }
@@ -535,6 +585,9 @@ public class MainActivity extends Activity {
         Button strideButton = new Button(this); strideButton.setText(t(21));
         strideButton.setOnClickListener(v -> editDecimal(t(21), "stride", 75f));
         content.addView(strideButton, lp(-1, 50));
+        Button sensorButton = new Button(this); sensorButton.setText(t(38));
+        sensorButton.setOnClickListener(v -> enableStepCounting());
+        content.addView(sensorButton, lp(-1, 50));
         Button languageButton = new Button(this); languageButton.setText(t(11));
         languageButton.setOnClickListener(v -> chooseLanguage()); content.addView(languageButton, lp(-1, 50));
         Button themeButton = new Button(this); themeButton.setText(t(12));
@@ -657,10 +710,13 @@ public class MainActivity extends Activity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == 1001) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                startStepService();
+                boolean permissionWasAlreadyHandled = activityPermissionGranted;
+                activityPermissionGranted = true;
+                if (!permissionWasAlreadyHandled) startStepService();
                 showPage(page);
                 requestNotificationPermissionIfNeeded();
             } else {
+                activityPermissionGranted = false;
                 Toast.makeText(this, t(36), Toast.LENGTH_LONG).show();
             }
         } else if (requestCode == 1002) {
