@@ -43,6 +43,33 @@ beforeEach(async () => {
 });
 
 describe("StepFit PRO challenge score rules", () => {
+  it("rejects unauthenticated reads and writes", async () => {
+    await seedChallengeAndScore();
+    const anonymous = env.unauthenticatedContext().firestore();
+    const scorePath = `challenges/${CHALLENGE_ID}/dailyProgress/${ENTRY_ID}`;
+
+    await assertFails(getDoc(doc(anonymous, scorePath)));
+    await assertFails(setDoc(doc(anonymous, `challenges/${CHALLENGE_ID}/dailyProgress/anonymous-entry`), {
+      uid: "anonymous",
+      day: DAY,
+      steps: 1000,
+      updatedAt: serverTimestamp()
+    }));
+  });
+
+  it("rejects a blocked participant reading challenge scores", async () => {
+    await seedChallengeAndScore();
+    await env.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(), "users/alice"), {
+        blocked: true
+      });
+    });
+
+    const alice = env.authenticatedContext("alice").firestore();
+    const scorePath = `challenges/${CHALLENGE_ID}/dailyProgress/${ENTRY_ID}`;
+    await assertFails(getDoc(doc(alice, scorePath)));
+  });
+
   it("rejects a participant creating a client-submitted score", async () => {
     await seedChallengeAndScore();
     const alice = env.authenticatedContext("alice").firestore();
