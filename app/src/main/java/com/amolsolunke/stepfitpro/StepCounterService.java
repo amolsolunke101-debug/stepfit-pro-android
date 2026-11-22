@@ -35,6 +35,18 @@ public class StepCounterService extends Service implements SensorEventListener {
     public void onCreate() {
         super.onCreate();
         prefs = getSharedPreferences("StepFitData", MODE_PRIVATE);
+        boolean permissionGranted = Build.VERSION.SDK_INT < 29 ||
+                checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED;
+        if (!permissionGranted) {
+            // A sticky restart can race with permission revocation. Do not enter
+            // the health foreground state without its required runtime permission.
+            prefs.edit().putBoolean("sensor_available", false)
+                    .putBoolean("sensor_registered", false).apply();
+            broadcastUpdate();
+            stopSelf();
+            return;
+        }
+
         createNotificationChannel();
 
         // Android requires a foreground notification for a foreground service.
@@ -52,8 +64,6 @@ public class StepCounterService extends Service implements SensorEventListener {
             }
         }
 
-        boolean permissionGranted = Build.VERSION.SDK_INT < 29 ||
-                checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED;
         Sensor selectedSensor = stepSensor != null ? stepSensor : stepDetectorSensor;
         boolean available = selectedSensor != null && permissionGranted;
         prefs.edit().putBoolean("sensor_available", available).apply();
@@ -203,6 +213,19 @@ public class StepCounterService extends Service implements SensorEventListener {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // Permission can be revoked while the process is stopped. Fail closed
+        // before attempting to register sensors or keep a health FGS alive.
+        boolean permissionGranted = Build.VERSION.SDK_INT < 29 ||
+                checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED;
+        if (!permissionGranted) {
+            if (sensorManager != null) sensorManager.unregisterListener(this);
+            prefs.edit().putBoolean("sensor_available", false)
+                    .putBoolean("sensor_registered", false).apply();
+            broadcastUpdate();
+            stopSelf(startId);
+            return START_NOT_STICKY;
+        }
+
         // Re-register after a sticky service restart if needed.
         if (sensorManager == null) sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         if (sensorManager != null) {
@@ -213,8 +236,6 @@ public class StepCounterService extends Service implements SensorEventListener {
                 stepDetectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
             }
         }
-        boolean permissionGranted = Build.VERSION.SDK_INT < 29 ||
-                checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED;
         Sensor selectedSensor = stepSensor != null ? stepSensor : stepDetectorSensor;
         if (sensorManager != null && selectedSensor != null && permissionGranted) {
             sensorManager.unregisterListener(this);
