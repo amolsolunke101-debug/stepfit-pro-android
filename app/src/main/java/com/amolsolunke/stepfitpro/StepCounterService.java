@@ -143,7 +143,7 @@ public class StepCounterService extends Service implements SensorEventListener {
                     .putBoolean("sensor_registered", true)
                     .apply();
             broadcastUpdate();
-            if (lastNotificationSteps < 0 || todaySteps - lastNotificationSteps >= 5) {
+            if (lastNotificationSteps < 0 || todaySteps < lastNotificationSteps || todaySteps - lastNotificationSteps >= 5) {
                 NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
                 if (manager != null) manager.notify(NOTIFICATION_ID, buildNotification(todaySteps));
                 lastNotificationSteps = todaySteps;
@@ -191,7 +191,7 @@ public class StepCounterService extends Service implements SensorEventListener {
 
         broadcastUpdate();
 
-        if (lastNotificationSteps < 0 || Math.abs(todaySteps - lastNotificationSteps) >= 5) {
+        if (lastNotificationSteps < 0 || todaySteps < lastNotificationSteps || todaySteps - lastNotificationSteps >= 5) {
             NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             if (manager != null) manager.notify(NOTIFICATION_ID, buildNotification(todaySteps));
             lastNotificationSteps = todaySteps;
