@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- StepFitData.xml contains step history, profile details and GPS route points. -->
+    <exclude domain="sharedpref" path="StepFitData.xml" />
+</full-backup-content>
