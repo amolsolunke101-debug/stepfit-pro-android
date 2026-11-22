@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- Keep step history, profile details and GPS route points off cloud backups. -->
+        <exclude domain="sharedpref" path="StepFitData.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <!-- Require an explicit future migration design before transferring this private data. -->
+        <exclude domain="sharedpref" path="StepFitData.xml" />
+    </device-transfer>
+</data-extraction-rules>
