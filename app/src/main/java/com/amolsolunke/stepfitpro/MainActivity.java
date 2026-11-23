@@ -326,6 +326,9 @@ public class MainActivity extends Activity {
         showPage(page);
     }
 
+    // The legacy two-argument overload is used only below API 33, where
+    // receiver-export flags do not exist. API 33+ uses NOT_EXPORTED above.
+    @android.annotation.SuppressLint("UnspecifiedRegisterReceiverFlag")
     @Override
     protected void onResume() {
         super.onResume();
