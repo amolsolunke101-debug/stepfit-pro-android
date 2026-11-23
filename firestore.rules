@@ -21,6 +21,10 @@ service cloud.firestore {
       allow read: if activeUser() && (request.auth.uid == uid || admin());
       allow create: if admin()
         || (activeUser() && request.auth.uid == uid
+          && request.resource.data.uid == uid
+          && request.resource.data.keys().hasOnly(
+            ['uid', 'email', 'name', 'age', 'gender', 'updatedAt', 'photoUrl']
+          )
           && !('blocked' in request.resource.data));
       allow update: if activeUser() && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
