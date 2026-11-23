@@ -10,8 +10,11 @@ import com.google.firebase.firestore.FirebaseFirestore;
 
 public class CommunityActivity extends Activity {
     private LinearLayout box;
+    private interface TextAction {
+        void accept(String value);
+    }
     private void msg(String s) { Toast.makeText(this, s, Toast.LENGTH_LONG).show(); }
-    private void field(String title, java.util.function.Consumer<String> action) {
+    private void field(String title, TextAction action) {
         EditText input = new EditText(this); input.setSingleLine(true); input.setHint(title);
         new AlertDialog.Builder(this).setTitle(title).setView(input)
             .setNegativeButton("Cancel", null)
@@ -33,7 +36,7 @@ public class CommunityActivity extends Activity {
                 .show();
             return;
         }
-        box = new LinearLayout(this); box.setOrientation(1); box.setPadding(24,24,24,24);
+        box = new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setPadding(24,24,24,24);
         box.setBackgroundColor(Color.rgb(10,18,38));
         TextView title = new TextView(this); title.setText("StepFit PRO • Community");
         title.setTextColor(Color.WHITE); title.setTextSize(24); title.setGravity(Gravity.CENTER);
