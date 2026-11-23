@@ -27,6 +27,7 @@ public class StepCounterService extends Service implements SensorEventListener {
 
     private SensorManager sensorManager;
     private Sensor stepSensor;
+    private Sensor stepDetectorSensor;
     private SharedPreferences prefs;
     private long lastNotificationSteps = -1;
 
@@ -34,6 +35,18 @@ public class StepCounterService extends Service implements SensorEventListener {
     public void onCreate() {
         super.onCreate();
         prefs = getSharedPreferences("StepFitData", MODE_PRIVATE);
+        boolean permissionGranted = Build.VERSION.SDK_INT < 29 ||
+                checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED;
+        if (!permissionGranted) {
+            // A sticky restart can race with permission revocation. Do not enter
+            // the health foreground state without its required runtime permission.
+            prefs.edit().putBoolean("sensor_available", false)
+                    .putBoolean("sensor_registered", false).apply();
+            broadcastUpdate();
+            stopSelf();
+            return;
+        }
+
         createNotificationChannel();
 
         // Android requires a foreground notification for a foreground service.
@@ -44,19 +57,20 @@ public class StepCounterService extends Service implements SensorEventListener {
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         if (sensorManager != null) {
             stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
+            // Use the detector only on devices without a cumulative step counter.
+            // Never register both sensors, which would double-count the same walk.
+            if (stepSensor == null) {
+                stepDetectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
+            }
         }
 
-        boolean permissionGranted = Build.VERSION.SDK_INT < 29 ||
-                checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED;
-        boolean available = stepSensor != null && permissionGranted;
-        prefs.edit().putBoolean("sensor_available", available).apply();
-
-        if (available) {
-            boolean registered = sensorManager.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_NORMAL);
-            prefs.edit().putBoolean("sensor_registered", registered).apply();
-        } else {
-            prefs.edit().putBoolean("sensor_registered", false).apply();
-        }
+        Sensor selectedSensor = stepSensor != null ? stepSensor : stepDetectorSensor;
+        boolean registered = sensorManager != null && selectedSensor != null && permissionGranted
+                && sensorManager.registerListener(this, selectedSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        // "Available" means the listener was actually registered, not merely
+        // that a sensor object exists on this device.
+        prefs.edit().putBoolean("sensor_available", registered)
+                .putBoolean("sensor_registered", registered).apply();
         broadcastUpdate();
     }
 
@@ -112,9 +126,40 @@ public class StepCounterService extends Service implements SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        if (event == null || event.sensor == null ||
-                event.sensor.getType() != Sensor.TYPE_STEP_COUNTER ||
-                event.values == null || event.values.length == 0) return;
+        if (event == null || event.sensor == null) return;
+
+        // TYPE_STEP_DETECTOR reports one event per step. Use it only when the
+        // cumulative counter is absent, and keep the daily total locally.
+        if (event.sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
+            if (stepSensor != null || event.values == null || event.values.length == 0
+                    || event.values[0] <= 0f) return;
+            String today = getToday();
+            String savedDate = prefs.getString("date", "");
+            long todaySteps = Math.max(0L, getStoredLong("today_steps", 0L));
+            if (!today.equals(savedDate)) {
+                saveDayIfNeeded(today, savedDate, todaySteps);
+                todaySteps = 0L;
+            }
+            if (todaySteps < Long.MAX_VALUE) todaySteps++;
+            prefs.edit()
+                    .putLong("today_steps", todaySteps)
+                    .putLong("base_steps", -1L)
+                    .putLong("last_raw", -1L)
+                    .putString("date", today)
+                    .putBoolean("sensor_available", true)
+                    .putBoolean("sensor_registered", true)
+                    .apply();
+            broadcastUpdate();
+            if (lastNotificationSteps < 0 || todaySteps < lastNotificationSteps || todaySteps - lastNotificationSteps >= 5) {
+                NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                if (manager != null) manager.notify(NOTIFICATION_ID, buildNotification(todaySteps));
+                lastNotificationSteps = todaySteps;
+            }
+            return;
+        }
+
+        if (event.sensor.getType() != Sensor.TYPE_STEP_COUNTER || stepSensor == null
+                || event.values == null || event.values.length == 0) return;
 
         long rawSteps = Math.max(0L, (long) event.values[0]);
         String today = getToday();
@@ -128,17 +173,13 @@ public class StepCounterService extends Service implements SensorEventListener {
             todaySteps = 0L;
             baseSteps = rawSteps;
             lastRaw = rawSteps;
-        } else if (baseSteps < 0L || lastRaw < 0L) {
-            // First event after installation or reset: establish baseline.
-            baseSteps = rawSteps;
-            lastRaw = rawSteps;
-        } else if (rawSteps < lastRaw) {
-            // Sensor counter restarted; preserve today's accumulated total.
-            baseSteps = rawSteps - todaySteps;
+        } else {
+            StepSensorMath.Result update = StepSensorMath.update(
+                    rawSteps, todaySteps, baseSteps, lastRaw);
+            todaySteps = update.todaySteps;
+            baseSteps = update.baseSteps;
+            lastRaw = update.lastRaw;
         }
-
-        long calculated = Math.max(0L, rawSteps - baseSteps);
-        todaySteps = Math.max(todaySteps, calculated);
 
         prefs.edit()
                 .putLong("today_steps", todaySteps)
@@ -151,7 +192,7 @@ public class StepCounterService extends Service implements SensorEventListener {
 
         broadcastUpdate();
 
-        if (lastNotificationSteps < 0 || Math.abs(todaySteps - lastNotificationSteps) >= 5) {
+        if (lastNotificationSteps < 0 || todaySteps < lastNotificationSteps || todaySteps - lastNotificationSteps >= 5) {
             NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             if (manager != null) manager.notify(NOTIFICATION_ID, buildNotification(todaySteps));
             lastNotificationSteps = todaySteps;
@@ -163,17 +204,51 @@ public class StepCounterService extends Service implements SensorEventListener {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // Re-register after a sticky service restart if needed.
-        if (sensorManager == null) sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        if (stepSensor == null && sensorManager != null) {
-            stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
-        }
+        // Permission can be revoked while the process is stopped. Fail closed
+        // before attempting to register sensors or keep a health FGS alive.
         boolean permissionGranted = Build.VERSION.SDK_INT < 29 ||
                 checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED;
-        if (sensorManager != null && stepSensor != null && permissionGranted) {
-            sensorManager.unregisterListener(this);
-            boolean registered = sensorManager.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_NORMAL);
-            prefs.edit().putBoolean("sensor_available", true).putBoolean("sensor_registered", registered).apply();
+        if (!permissionGranted) {
+            if (sensorManager != null) sensorManager.unregisterListener(this);
+            prefs.edit().putBoolean("sensor_available", false)
+                    .putBoolean("sensor_registered", false).apply();
+            broadcastUpdate();
+            stopSelf(startId);
+            return START_NOT_STICKY;
+        }
+
+        // Re-register after a sticky service restart if needed.
+        if (sensorManager == null) sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        if (sensorManager != null) {
+            if (stepSensor == null) {
+                stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
+            }
+            if (stepSensor == null && stepDetectorSensor == null) {
+                stepDetectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
+            }
+        }
+        Sensor selectedSensor = stepSensor != null ? stepSensor : stepDetectorSensor;
+        if (sensorManager == null || selectedSensor == null) {
+            // Do not keep an idle foreground service alive on devices that do
+            // not expose either supported step sensor.
+            if (sensorManager != null) sensorManager.unregisterListener(this);
+            prefs.edit().putBoolean("sensor_available", false)
+                    .putBoolean("sensor_registered", false).apply();
+            broadcastUpdate();
+            stopSelf(startId);
+            return START_NOT_STICKY;
+        }
+
+        sensorManager.unregisterListener(this);
+        boolean registered = sensorManager.registerListener(this, selectedSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        prefs.edit().putBoolean("sensor_available", registered)
+                .putBoolean("sensor_registered", registered).apply();
+        broadcastUpdate();
+        if (!registered) {
+            // A failed listener registration must not leave a permanent
+            // notification/foreground service that cannot count steps.
+            stopSelf(startId);
+            return START_NOT_STICKY;
         }
         return START_STICKY;
     }
