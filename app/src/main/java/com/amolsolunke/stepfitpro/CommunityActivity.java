@@ -36,7 +36,7 @@ public class CommunityActivity extends Activity {
                 .show();
             return;
         }
-        box = new LinearLayout(this); box.setOrientation(1); box.setPadding(24,24,24,24);
+        box = new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setPadding(24,24,24,24);
         box.setBackgroundColor(Color.rgb(10,18,38));
         TextView title = new TextView(this); title.setText("StepFit PRO • Community");
         title.setTextColor(Color.WHITE); title.setTextSize(24); title.setGravity(Gravity.CENTER);
