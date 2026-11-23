@@ -42,6 +42,56 @@ beforeEach(async () => {
   await env.clearFirestore();
 });
 
+describe("StepFit PRO profile field rules", () => {
+  it("allows a user to create only the supported fields in their own profile", async () => {
+    const alice = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(setDoc(doc(alice, "users/alice"), {
+      uid: "alice",
+      email: "alice@example.com",
+      name: "Alice",
+      age: "30",
+      gender: "",
+      updatedAt: serverTimestamp()
+    }));
+  });
+
+  it("rejects self-created profiles with blocked or arbitrary admin fields", async () => {
+    const alice = env.authenticatedContext("alice").firestore();
+    await assertFails(setDoc(doc(alice, "users/alice"), {
+      uid: "alice",
+      name: "Alice",
+      blocked: true
+    }));
+    await assertFails(setDoc(doc(alice, "users/alice"), {
+      uid: "alice",
+      name: "Alice",
+      admin: true
+    }));
+  });
+
+  it("rejects profile creation under another user's document ID", async () => {
+    const alice = env.authenticatedContext("alice").firestore();
+    await assertFails(setDoc(doc(alice, "users/bob"), {
+      uid: "bob",
+      name: "Bob"
+    }));
+  });
+
+  it("rejects a user changing their own protected blocked field", async () => {
+    await env.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(), "users/alice"), {
+        uid: "alice",
+        name: "Alice",
+        blocked: false
+      });
+    });
+    const alice = env.authenticatedContext("alice").firestore();
+    await assertFails(setDoc(doc(alice, "users/alice"), {
+      blocked: true
+    }, { merge: true }));
+  });
+});
+
 describe("StepFit PRO challenge score rules", () => {
   it("rejects unauthenticated reads and writes", async () => {
     await seedChallengeAndScore();
