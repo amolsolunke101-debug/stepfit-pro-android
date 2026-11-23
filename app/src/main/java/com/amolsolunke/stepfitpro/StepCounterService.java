@@ -65,15 +65,12 @@ public class StepCounterService extends Service implements SensorEventListener {
         }
 
         Sensor selectedSensor = stepSensor != null ? stepSensor : stepDetectorSensor;
-        boolean available = selectedSensor != null && permissionGranted;
-        prefs.edit().putBoolean("sensor_available", available).apply();
-
-        if (available) {
-            boolean registered = sensorManager.registerListener(this, selectedSensor, SensorManager.SENSOR_DELAY_NORMAL);
-            prefs.edit().putBoolean("sensor_registered", registered).apply();
-        } else {
-            prefs.edit().putBoolean("sensor_registered", false).apply();
-        }
+        boolean registered = sensorManager != null && selectedSensor != null && permissionGranted
+                && sensorManager.registerListener(this, selectedSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        // "Available" means the listener was actually registered, not merely
+        // that a sensor object exists on this device.
+        prefs.edit().putBoolean("sensor_available", registered)
+                .putBoolean("sensor_registered", registered).apply();
         broadcastUpdate();
     }
 
@@ -237,19 +234,27 @@ public class StepCounterService extends Service implements SensorEventListener {
             }
         }
         Sensor selectedSensor = stepSensor != null ? stepSensor : stepDetectorSensor;
-        if (sensorManager != null && selectedSensor != null && permissionGranted) {
-            sensorManager.unregisterListener(this);
-            boolean registered = sensorManager.registerListener(this, selectedSensor, SensorManager.SENSOR_DELAY_NORMAL);
-            prefs.edit().putBoolean("sensor_available", true).putBoolean("sensor_registered", registered).apply();
-        } else {
-            // A sticky service restart can happen after permission revocation or
-            // when neither supported step sensor is present.
+        if (sensorManager == null || selectedSensor == null) {
+            // Do not keep an idle foreground service alive on devices that do
+            // not expose either supported step sensor.
             if (sensorManager != null) sensorManager.unregisterListener(this);
-            prefs.edit()
-                    .putBoolean("sensor_available", selectedSensor != null && permissionGranted)
-                    .putBoolean("sensor_registered", false)
-                    .apply();
+            prefs.edit().putBoolean("sensor_available", false)
+                    .putBoolean("sensor_registered", false).apply();
             broadcastUpdate();
+            stopSelf(startId);
+            return START_NOT_STICKY;
+        }
+
+        sensorManager.unregisterListener(this);
+        boolean registered = sensorManager.registerListener(this, selectedSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        prefs.edit().putBoolean("sensor_available", registered)
+                .putBoolean("sensor_registered", registered).apply();
+        broadcastUpdate();
+        if (!registered) {
+            // A failed listener registration must not leave a permanent
+            // notification/foreground service that cannot count steps.
+            stopSelf(startId);
+            return START_NOT_STICKY;
         }
         return START_STICKY;
     }
