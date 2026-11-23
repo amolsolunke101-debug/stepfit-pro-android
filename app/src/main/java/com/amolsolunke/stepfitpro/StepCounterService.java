@@ -173,19 +173,13 @@ public class StepCounterService extends Service implements SensorEventListener {
             todaySteps = 0L;
             baseSteps = rawSteps;
             lastRaw = rawSteps;
-        } else if (lastRaw < 0L) {
-            // A missing raw-sensor baseline means this is the first event after installation or reset.
-            // Do not treat a negative baseSteps as uninitialized: after a sensor counter reset,
-            // baseSteps can be negative while preserving the steps already accumulated today.
-            baseSteps = rawSteps;
-            lastRaw = rawSteps;
-        } else if (rawSteps < lastRaw) {
-            // Sensor counter restarted; preserve today's accumulated total.
-            baseSteps = rawSteps - todaySteps;
+        } else {
+            StepSensorMath.Result update = StepSensorMath.update(
+                    rawSteps, todaySteps, baseSteps, lastRaw);
+            todaySteps = update.todaySteps;
+            baseSteps = update.baseSteps;
+            lastRaw = update.lastRaw;
         }
-
-        long calculated = Math.max(0L, rawSteps - baseSteps);
-        todaySteps = Math.max(todaySteps, calculated);
 
         prefs.edit()
                 .putLong("today_steps", todaySteps)
