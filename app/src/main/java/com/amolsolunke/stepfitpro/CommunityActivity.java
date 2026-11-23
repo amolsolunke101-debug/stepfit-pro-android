@@ -10,8 +10,11 @@ import com.google.firebase.firestore.FirebaseFirestore;
 
 public class CommunityActivity extends Activity {
     private LinearLayout box;
+    private interface TextAction {
+        void accept(String value);
+    }
     private void msg(String s) { Toast.makeText(this, s, Toast.LENGTH_LONG).show(); }
-    private void field(String title, java.util.function.Consumer<String> action) {
+    private void field(String title, TextAction action) {
         EditText input = new EditText(this); input.setSingleLine(true); input.setHint(title);
         new AlertDialog.Builder(this).setTitle(title).setView(input)
             .setNegativeButton("Cancel", null)
