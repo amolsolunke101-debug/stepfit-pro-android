@@ -176,7 +176,7 @@ public class RouteTrackingActivity extends Activity {
     @Override public void onCreate(Bundle b) {
         super.onCreate(b);
         LinearLayout root = new LinearLayout(this);
-        root.setOrientation(1);
+        root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(24,24,24,24);
         root.setBackgroundColor(Color.rgb(10,18,38));
         TextView title = new TextView(this);
