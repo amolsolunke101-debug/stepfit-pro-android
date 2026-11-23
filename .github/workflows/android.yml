@@ -41,9 +41,14 @@ jobs:
       - name: Build APK
         run: gradle assembleDebug
 
-      - name: Upload APK
+      - name: Compile unsigned release variant
+        run: gradle assembleRelease
+
+      - name: Upload debug and unsigned release APKs
         uses: actions/upload-artifact@v4
         with:
-          name: StepFit-PRO-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: StepFit-PRO-APKs
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/release/*.apk
           if-no-files-found: error
