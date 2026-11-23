@@ -422,17 +422,14 @@ public class MainActivity extends Activity {
         }
     }
 
-    private int getSteps() {
+    private long getSteps() {
         // SharedPreferences may contain an Integer from an older app version
-        // or a Long from the updated service. Read either type safely.
-        Object stored = prefs.getAll().get("today_steps");
-        long value = stored instanceof Number ? ((Number) stored).longValue() : 0L;
-        if (value < 0) value = 0;
-        return value > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) value;
+        // or a Long from the step-counter service. Preserve the full non-negative value.
+        return StepCountMath.nonNegativeLong(prefs.getAll().get("today_steps"));
     }
 
     private void showHome() {
-        int steps = getSteps();
+        long steps = getSteps();
         int goal = prefs.getInt("goal", 0);
         float weight = prefs.getFloat("weight", 70f);
         float stride = prefs.getFloat("stride", 75f);
@@ -442,7 +439,7 @@ public class MainActivity extends Activity {
         addCard(t(1), String.format(Locale.US, "%.2f km", distanceKm));
         addCard(t(2), String.format(Locale.US, "%.0f kcal", calories));
         addCard(t(9), goal <= 0 ? "No limit" : steps + " / " + goal);
-        int percent = goal <= 0 ? 0 : Math.min(100, (int) (steps * 100.0 / goal));
+        int percent = StepCountMath.goalPercent(steps, goal);
         ProgressBar bar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         bar.setMax(100); bar.setProgress(percent); content.addView(bar, lp(-1, 22));
         content.addView(text(goal <= 0 ? t(16) : percent + "% " + t(26), 17, accent, true));
@@ -460,16 +457,17 @@ public class MainActivity extends Activity {
     }
 
     private void showProgress() {
-        int steps = getSteps(); int goal = prefs.getInt("goal", 0);
+        long steps = getSteps(); int goal = prefs.getInt("goal", 0);
         addCard(t(27), String.format(Locale.US, "%,d", steps));
-        addCard(t(26), goal <= 0 ? "No goal set" : Math.min(100, steps * 100 / Math.max(1, goal)) + "%");
-        int total = 0, highest = 0;
+        addCard(t(26), goal <= 0 ? "No goal set" : StepCountMath.goalPercent(steps, goal) + "%");
+        long total = 0L, highest = 0L;
         for (int i = 0; i < 7; i++) {
             String date = dateMinus(i);
             long value = prefs.getLong("history_" + date, 0);
             if (i == 0) value = steps;
-            int count = (int) Math.max(0, Math.min(Integer.MAX_VALUE, value));
-            total += count; highest = Math.max(highest, count);
+            long count = Math.max(0L, value);
+            total = StepCountMath.saturatingAdd(total, count);
+            highest = Math.max(highest, count);
             TextView day = text(date + "    " + count + " steps", 14, Color.WHITE, false);
             day.setBackground(shape(card, 12)); content.addView(day, lp(-1, 44));
         }
