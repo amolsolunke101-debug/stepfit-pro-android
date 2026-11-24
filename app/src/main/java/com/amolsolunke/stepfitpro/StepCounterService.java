@@ -140,7 +140,7 @@ public class StepCounterService extends Service implements SensorEventListener {
                 saveDayIfNeeded(today, savedDate, todaySteps);
                 todaySteps = 0L;
             }
-            if (todaySteps < Long.MAX_VALUE) todaySteps++;
+            todaySteps = StepDetectorMath.increment(todaySteps, event.values[0]);
             prefs.edit()
                     .putLong("today_steps", todaySteps)
                     .putLong("base_steps", -1L)
