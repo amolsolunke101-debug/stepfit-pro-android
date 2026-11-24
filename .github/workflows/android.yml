@@ -35,7 +35,7 @@ jobs:
       - name: Guard against Firebase Storage reintroduction
         shell: bash
         run: |
-          if grep -RInE 'com\\.google\\.firebase:firebase-storage|com\\.google\\.firebase\\.storage|FirebaseStorage|StorageReference|\\.putFile\\(' app/src app/build.gradle; then
+          if grep -RInE 'firebase-storage|FirebaseStorage|StorageReference|putFile' app/src app/build.gradle; then
             echo "Firebase Storage usage is not allowed in the no-billing app branch."
             exit 1
           fi
