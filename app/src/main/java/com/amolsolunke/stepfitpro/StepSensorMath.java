@@ -29,8 +29,17 @@ final class StepSensorMath {
             base = raw - total;
         }
 
-        long calculated = Math.max(0L, raw - base);
+        // A reset can make the baseline negative. Saturate instead of allowing
+        // raw - base to wrap around when a corrupted/very large value is read.
+        long calculated = nonNegativeDifference(raw, base);
         total = Math.max(total, calculated);
         return new Result(total, base, raw);
+    }
+
+    private static long nonNegativeDifference(long raw, long base) {
+        if (base < 0L && raw > Long.MAX_VALUE + base) {
+            return Long.MAX_VALUE;
+        }
+        return Math.max(0L, raw - base);
     }
 }
