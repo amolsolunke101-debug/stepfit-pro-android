@@ -35,4 +35,13 @@ public class StepSensorMathTest {
         assertEquals(-4_975L, result.baseSteps);
         assertEquals(26L, result.lastRaw);
     }
+
+    @Test
+    public void negativeBaselineCannotOverflowTheCalculatedTotal() {
+        StepSensorMath.Result result = StepSensorMath.update(
+                Long.MAX_VALUE, 1L, -1L, Long.MAX_VALUE - 1L);
+        assertEquals(Long.MAX_VALUE, result.todaySteps);
+        assertEquals(-1L, result.baseSteps);
+        assertEquals(Long.MAX_VALUE, result.lastRaw);
+    }
 }
