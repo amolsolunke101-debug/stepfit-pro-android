@@ -1,0 +1,32 @@
+name: Firebase Security Rules Tests
+
+on:
+  push:
+    branches:
+      - main
+      - 'fix/**'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  rules-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install test dependencies
+        run: npm install
+      - name: Summarize dependency audit
+        run: |
+          npm audit --json > npm-audit.json || true
+          node -e "const report = require('./npm-audit.json'); const counts = report.metadata?.vulnerabilities || {}; console.log('npm audit counts:', JSON.stringify(counts)); for (const [name, item] of Object.entries(report.vulnerabilities || {})) console.log(item.severity, name, 'range=' + item.range, 'fix=' + JSON.stringify(item.fixAvailable));"
+      - name: Run Firestore rules tests in emulator
+        run: npm run test:rules
