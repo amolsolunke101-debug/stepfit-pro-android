@@ -2,8 +2,26 @@ package com.amolsolunke.stepfitpro;
 
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class StepSensorMathTest {
+    @Test
+    public void acceptsZeroAndFiniteNonNegativeRawCounterValues() {
+        assertTrue(StepSensorMath.isValidRawCounter(0f));
+        assertTrue(StepSensorMath.isValidRawCounter(1f));
+        assertTrue(StepSensorMath.isValidRawCounter(12_345f));
+    }
+
+    @Test
+    public void rejectsNegativeNonFiniteAndOutOfRangeRawCounterValues() {
+        assertFalse(StepSensorMath.isValidRawCounter(-1f));
+        assertFalse(StepSensorMath.isValidRawCounter(Float.NaN));
+        assertFalse(StepSensorMath.isValidRawCounter(Float.POSITIVE_INFINITY));
+        assertFalse(StepSensorMath.isValidRawCounter(Float.NEGATIVE_INFINITY));
+        assertFalse(StepSensorMath.isValidRawCounter(Float.MAX_VALUE));
+    }
+
     @Test
     public void firstEventEstablishesBaselineWithoutCountingOldSteps() {
         StepSensorMath.Result result = StepSensorMath.update(12_000L, 0L, -1L, -1L);
