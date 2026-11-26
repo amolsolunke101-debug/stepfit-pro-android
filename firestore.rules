@@ -77,6 +77,9 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids'])
           && request.resource.data.memberUids is list
           && request.resource.data.memberUids.hasAll(resource.data.memberUids)
+          // A member may add only their own UID; existing members cannot invite
+          // arbitrary accounts by editing the membership list directly.
+          && !resource.data.memberUids.hasAny([request.auth.uid])
           && request.resource.data.memberUids.size() == resource.data.memberUids.size() + 1
           && request.resource.data.memberUids.hasAny([request.auth.uid]));
       allow delete: if admin() || (activeUser() && resource.data.ownerUid == request.auth.uid);
@@ -89,6 +92,9 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantUids'])
         && request.resource.data.participantUids is list
         && request.resource.data.participantUids.hasAll(resource.data.participantUids)
+        // Joining is self-service only. An existing participant cannot use
+        // this update rule to add a different account to the challenge.
+        && !resource.data.participantUids.hasAny([request.auth.uid])
         && request.resource.data.participantUids.size() == resource.data.participantUids.size() + 1
         && request.resource.data.participantUids.hasAny([request.auth.uid]));
     }
