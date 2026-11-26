@@ -161,7 +161,8 @@ public class StepCounterService extends Service implements SensorEventListener {
         if (event.sensor.getType() != Sensor.TYPE_STEP_COUNTER || stepSensor == null
                 || event.values == null || event.values.length == 0) return;
 
-        long rawSteps = Math.max(0L, (long) event.values[0]);
+        if (!StepSensorMath.isValidRawCounter(event.values[0])) return;
+        long rawSteps = (long) event.values[0];
         String today = getToday();
         String savedDate = prefs.getString("date", "");
         long todaySteps = Math.max(0L, getStoredLong("today_steps", 0L));
