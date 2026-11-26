@@ -16,6 +16,14 @@ final class StepSensorMath {
         }
     }
 
+    /** Reject malformed TYPE_STEP_COUNTER values before float-to-long conversion. */
+    static boolean isValidRawCounter(float rawSteps) {
+        return rawSteps >= 0f
+                && !Float.isNaN(rawSteps)
+                && !Float.isInfinite(rawSteps)
+                && (double) rawSteps <= (double) Long.MAX_VALUE;
+    }
+
     static Result update(long rawSteps, long todaySteps, long baseSteps, long lastRaw) {
         long raw = Math.max(0L, rawSteps);
         long total = Math.max(0L, todaySteps);
