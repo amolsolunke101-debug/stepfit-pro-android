@@ -1,5 +1,5 @@
 const { initializeTestEnvironment, assertSucceeds, assertFails } = require("@firebase/rules-unit-testing");
-const { doc, setDoc, getDoc, serverTimestamp } = require("firebase/firestore");
+const { doc, setDoc, getDoc, updateDoc, serverTimestamp } = require("firebase/firestore");
 const fs = require("fs");
 
 const PROJECT_ID = "demo-stepfit-rules";
@@ -8,6 +8,16 @@ const DAY = "2026-11-19";
 const ENTRY_ID = "alice_2026-11-19";
 
 let env;
+
+async function seedClub() {
+  await env.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), "clubs/walkers"), {
+      name: "Walkers",
+      ownerUid: "alice",
+      memberUids: ["alice"]
+    });
+  });
+}
 
 async function seedChallengeAndScore() {
   await env.withSecurityRulesDisabled(async context => {
@@ -89,6 +99,58 @@ describe("StepFit PRO profile field rules", () => {
     await assertFails(setDoc(doc(alice, "users/alice"), {
       blocked: true
     }, { merge: true }));
+  });
+});
+
+describe("StepFit PRO club membership rules", () => {
+  it("allows a user to add only their own UID when joining a club", async () => {
+    await seedClub();
+    const bob = env.authenticatedContext("bob").firestore();
+    await assertSucceeds(updateDoc(doc(bob, "clubs/walkers"), {
+      memberUids: ["alice", "bob"]
+    }));
+  });
+
+  it("rejects an existing club member adding another account", async () => {
+    await seedClub();
+    const alice = env.authenticatedContext("alice").firestore();
+    await assertFails(updateDoc(doc(alice, "clubs/walkers"), {
+      memberUids: ["alice", "charlie"]
+    }));
+  });
+
+  it("rejects a new member adding themselves and a second account together", async () => {
+    await seedClub();
+    const bob = env.authenticatedContext("bob").firestore();
+    await assertFails(updateDoc(doc(bob, "clubs/walkers"), {
+      memberUids: ["alice", "bob", "charlie"]
+    }));
+  });
+});
+
+describe("StepFit PRO challenge membership rules", () => {
+  it("allows a user to join a challenge by adding only their own UID", async () => {
+    await seedChallengeAndScore();
+    const bob = env.authenticatedContext("bob").firestore();
+    await assertSucceeds(updateDoc(doc(bob, `challenges/${CHALLENGE_ID}`), {
+      participantUids: ["alice", "bob"]
+    }));
+  });
+
+  it("rejects an existing participant adding a different account", async () => {
+    await seedChallengeAndScore();
+    const alice = env.authenticatedContext("alice").firestore();
+    await assertFails(updateDoc(doc(alice, `challenges/${CHALLENGE_ID}`), {
+      participantUids: ["alice", "charlie"]
+    }));
+  });
+
+  it("rejects a new participant adding themselves and another account together", async () => {
+    await seedChallengeAndScore();
+    const bob = env.authenticatedContext("bob").firestore();
+    await assertFails(updateDoc(doc(bob, `challenges/${CHALLENGE_ID}`), {
+      participantUids: ["alice", "bob", "charlie"]
+    }));
   });
 });
 
