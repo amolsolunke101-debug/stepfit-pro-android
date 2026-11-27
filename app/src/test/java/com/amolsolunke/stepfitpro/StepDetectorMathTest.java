@@ -14,11 +14,15 @@ public class StepDetectorMathTest {
     }
 
     @Test
-    public void zeroAndNegativeEventsAreIgnored() {
+    public void zeroNegativeAndUnexpectedPositivePayloadsAreIgnored() {
         assertFalse(StepDetectorMath.isValidEvent(0f));
         assertFalse(StepDetectorMath.isValidEvent(-1f));
+        assertFalse(StepDetectorMath.isValidEvent(0.5f));
+        assertFalse(StepDetectorMath.isValidEvent(2f));
         assertEquals(100L, StepDetectorMath.increment(100L, 0f));
         assertEquals(100L, StepDetectorMath.increment(100L, -1f));
+        assertEquals(100L, StepDetectorMath.increment(100L, 0.5f));
+        assertEquals(100L, StepDetectorMath.increment(100L, 2f));
     }
 
     @Test
