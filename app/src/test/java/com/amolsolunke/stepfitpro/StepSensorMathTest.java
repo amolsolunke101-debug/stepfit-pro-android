@@ -11,6 +11,7 @@ public class StepSensorMathTest {
         assertTrue(StepSensorMath.isValidRawCounter(0f));
         assertTrue(StepSensorMath.isValidRawCounter(1f));
         assertTrue(StepSensorMath.isValidRawCounter(12_345f));
+        assertTrue(StepSensorMath.isValidRawCounter(0x1.fffffep62f));
     }
 
     @Test
@@ -19,6 +20,7 @@ public class StepSensorMathTest {
         assertFalse(StepSensorMath.isValidRawCounter(Float.NaN));
         assertFalse(StepSensorMath.isValidRawCounter(Float.POSITIVE_INFINITY));
         assertFalse(StepSensorMath.isValidRawCounter(Float.NEGATIVE_INFINITY));
+        assertFalse(StepSensorMath.isValidRawCounter(0x1.0p63f));
         assertFalse(StepSensorMath.isValidRawCounter(Float.MAX_VALUE));
     }
 
