@@ -18,10 +18,12 @@ final class StepSensorMath {
 
     /** Reject malformed TYPE_STEP_COUNTER values before float-to-long conversion. */
     static boolean isValidRawCounter(float rawSteps) {
+        // Long.MAX_VALUE rounds up to 2^63 when converted to double. Use the
+        // exclusive 2^63 boundary directly so that out-of-range float is rejected.
         return rawSteps >= 0f
                 && !Float.isNaN(rawSteps)
                 && !Float.isInfinite(rawSteps)
-                && (double) rawSteps <= (double) Long.MAX_VALUE;
+                && rawSteps < 0x1.0p63f;
     }
 
     static Result update(long rawSteps, long todaySteps, long baseSteps, long lastRaw) {
