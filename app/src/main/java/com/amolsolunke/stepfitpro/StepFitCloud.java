@@ -1,23 +1,19 @@
 package com.amolsolunke.stepfitpro;
 
-import android.net.Uri;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.storage.FirebaseStorage;
-import com.google.firebase.storage.StorageReference;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Cloud repository for account-owned StepFit data.
- * Authorization is enforced by Firestore/Storage rules, never by this UI class.
+ * Authorization is enforced by Firestore rules, never by this UI class.
  */
 public final class StepFitCloud {
     private static final FirebaseFirestore DB = FirebaseFirestore.getInstance();
-    private static final FirebaseStorage STORAGE = FirebaseStorage.getInstance();
     private StepFitCloud() {}
 
     public interface Result { void done(boolean ok, String message); }
@@ -40,22 +36,6 @@ public final class StepFitCloud {
         DB.collection("users").document(id).set(data, com.google.firebase.firestore.SetOptions.merge())
           .addOnSuccessListener(v -> result.done(true, "Profile synced."))
           .addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()));
-    }
-
-    public static void uploadProfilePhoto(Uri photo, Result result) {
-        String id = uid();
-        if (id == null || photo == null) { result.done(false, "Sign in and choose a photo."); return; }
-        StorageReference ref = STORAGE.getReference().child("profilePhotos/" + id + "/avatar");
-        ref.putFile(photo).continueWithTask(task -> {
-            if (!task.isSuccessful()) throw task.getException();
-            return ref.getDownloadUrl();
-        }).addOnSuccessListener(url ->
-            DB.collection("users").document(id).set(
-                java.util.Collections.singletonMap("photoUrl", url.toString()),
-                com.google.firebase.firestore.SetOptions.merge())
-              .addOnSuccessListener(v -> result.done(true, "Profile photo synced."))
-              .addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()))
-        ).addOnFailureListener(e -> result.done(false, e.getLocalizedMessage()));
     }
 
     public static void saveDailyStats(long steps, double distanceKm, double calories, Result result) {
