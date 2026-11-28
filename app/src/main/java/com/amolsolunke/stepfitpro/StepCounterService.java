@@ -132,7 +132,7 @@ public class StepCounterService extends Service implements SensorEventListener {
         // cumulative counter is absent, and keep the daily total locally.
         if (event.sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
             if (stepSensor != null || event.values == null || event.values.length == 0
-                    || event.values[0] <= 0f) return;
+                    || !StepDetectorMath.isValidEvent(event.values[0])) return;
             String today = getToday();
             String savedDate = prefs.getString("date", "");
             long todaySteps = Math.max(0L, getStoredLong("today_steps", 0L));
@@ -140,7 +140,7 @@ public class StepCounterService extends Service implements SensorEventListener {
                 saveDayIfNeeded(today, savedDate, todaySteps);
                 todaySteps = 0L;
             }
-            if (todaySteps < Long.MAX_VALUE) todaySteps++;
+            todaySteps = StepDetectorMath.increment(todaySteps, event.values[0]);
             prefs.edit()
                     .putLong("today_steps", todaySteps)
                     .putLong("base_steps", -1L)
@@ -161,7 +161,8 @@ public class StepCounterService extends Service implements SensorEventListener {
         if (event.sensor.getType() != Sensor.TYPE_STEP_COUNTER || stepSensor == null
                 || event.values == null || event.values.length == 0) return;
 
-        long rawSteps = Math.max(0L, (long) event.values[0]);
+        if (!StepSensorMath.isValidRawCounter(event.values[0])) return;
+        long rawSteps = (long) event.values[0];
         String today = getToday();
         String savedDate = prefs.getString("date", "");
         long todaySteps = Math.max(0L, getStoredLong("today_steps", 0L));

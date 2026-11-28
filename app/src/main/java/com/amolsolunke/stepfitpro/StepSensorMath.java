@@ -16,6 +16,18 @@ final class StepSensorMath {
         }
     }
 
+    /** Reject malformed TYPE_STEP_COUNTER values before float-to-long conversion. */
+    static boolean isValidRawCounter(float rawSteps) {
+        // Long.MAX_VALUE rounds up to 2^63 when converted to double. Use the
+        // exclusive 2^63 boundary directly so that out-of-range float is rejected.
+        // TYPE_STEP_COUNTER is a count, so fractional payloads are malformed too.
+        return rawSteps >= 0f
+                && !Float.isNaN(rawSteps)
+                && !Float.isInfinite(rawSteps)
+                && rawSteps < 0x1.0p63f
+                && rawSteps == Math.rint(rawSteps);
+    }
+
     static Result update(long rawSteps, long todaySteps, long baseSteps, long lastRaw) {
         long raw = Math.max(0L, rawSteps);
         long total = Math.max(0L, todaySteps);
@@ -29,8 +41,17 @@ final class StepSensorMath {
             base = raw - total;
         }
 
-        long calculated = Math.max(0L, raw - base);
+        // A reset can make the baseline negative. Saturate instead of allowing
+        // raw - base to wrap around when a corrupted/very large value is read.
+        long calculated = nonNegativeDifference(raw, base);
         total = Math.max(total, calculated);
         return new Result(total, base, raw);
+    }
+
+    private static long nonNegativeDifference(long raw, long base) {
+        if (base < 0L && raw > Long.MAX_VALUE + base) {
+            return Long.MAX_VALUE;
+        }
+        return Math.max(0L, raw - base);
     }
 }
