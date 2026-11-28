@@ -7,7 +7,7 @@ import static org.junit.Assert.assertTrue;
 
 public class StepSensorMathTest {
     @Test
-    public void acceptsZeroAndFiniteNonNegativeRawCounterValues() {
+    public void acceptsZeroAndFiniteNonNegativeIntegralRawCounterValues() {
         assertTrue(StepSensorMath.isValidRawCounter(0f));
         assertTrue(StepSensorMath.isValidRawCounter(1f));
         assertTrue(StepSensorMath.isValidRawCounter(12_345f));
@@ -15,8 +15,11 @@ public class StepSensorMathTest {
     }
 
     @Test
-    public void rejectsNegativeNonFiniteAndOutOfRangeRawCounterValues() {
+    public void rejectsNegativeFractionalNonFiniteAndOutOfRangeRawCounterValues() {
         assertFalse(StepSensorMath.isValidRawCounter(-1f));
+        assertFalse(StepSensorMath.isValidRawCounter(0.5f));
+        assertFalse(StepSensorMath.isValidRawCounter(1.25f));
+        assertFalse(StepSensorMath.isValidRawCounter(12_345.5f));
         assertFalse(StepSensorMath.isValidRawCounter(Float.NaN));
         assertFalse(StepSensorMath.isValidRawCounter(Float.POSITIVE_INFINITY));
         assertFalse(StepSensorMath.isValidRawCounter(Float.NEGATIVE_INFINITY));
