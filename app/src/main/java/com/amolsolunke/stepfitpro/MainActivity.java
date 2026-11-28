@@ -241,7 +241,7 @@ public class MainActivity extends Activity {
             int readGrant = data.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION;
             try {
                 if (readGrant == 0) throw new SecurityException("No persistent read grant was returned.");
-                getContentResolver().takePersistableUriPermission(uri, readGrant);
+                getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
             } catch (RuntimeException denied) {
                 Toast.makeText(this,
                     "The selected photo permission could not be saved. Please choose the photo again.",
