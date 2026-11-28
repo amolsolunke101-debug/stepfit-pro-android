@@ -238,7 +238,16 @@ public class MainActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == PICK_PROFILE_PHOTO && resultCode == RESULT_OK && data != null && data.getData() != null) {
             android.net.Uri uri = data.getData();
-            try { getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (Exception ignored) {}
+            int readGrant = data.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION;
+            try {
+                if (readGrant == 0) throw new SecurityException("No persistent read grant was returned.");
+                getContentResolver().takePersistableUriPermission(uri, readGrant);
+            } catch (SecurityException denied) {
+                Toast.makeText(this,
+                    "The selected photo permission could not be saved. Please choose the photo again.",
+                    Toast.LENGTH_LONG).show();
+                return;
+            }
             prefs.edit().putString("profile_photo_uri", uri.toString()).apply();
             Toast.makeText(this,
                 "Profile photo saved on this device. Cloud photo upload is disabled to avoid Storage billing.",
@@ -518,6 +527,26 @@ public class MainActivity extends Activity {
 
     private void showSettings() {
         content.addView(text(t(4), 24, accent, true));
+        String savedPhoto = prefs.getString("profile_photo_uri", "");
+        if (!savedPhoto.isEmpty()) {
+            ImageView profilePhoto = new ImageView(this);
+            profilePhoto.setContentDescription("Profile photo");
+            profilePhoto.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            profilePhoto.setBackground(shape(card, 16));
+            try {
+                profilePhoto.setImageURI(android.net.Uri.parse(savedPhoto));
+            } catch (RuntimeException ignored) {
+                // A revoked document grant must not crash the Settings screen.
+            }
+            if (profilePhoto.getDrawable() != null) {
+                LinearLayout.LayoutParams photoParams = lp(112, 112);
+                photoParams.gravity = Gravity.CENTER_HORIZONTAL;
+                photoParams.setMargins(0, dp(4), 0, dp(8));
+                content.addView(profilePhoto, photoParams);
+            } else {
+                content.addView(text("Saved profile photo is unavailable. Choose it again.", 13, Color.YELLOW, false));
+            }
+        }
         Button profileButton = new Button(this); profileButton.setText("My Profile");
         profileButton.setOnClickListener(v -> editProfile()); content.addView(profileButton, lp(-1, 50));
         String profileName = prefs.getString("profile_name", "");
