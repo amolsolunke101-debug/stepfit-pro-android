@@ -242,7 +242,7 @@ public class MainActivity extends Activity {
             try {
                 if (readGrant == 0) throw new SecurityException("No persistent read grant was returned.");
                 getContentResolver().takePersistableUriPermission(uri, readGrant);
-            } catch (SecurityException denied) {
+            } catch (RuntimeException denied) {
                 Toast.makeText(this,
                     "The selected photo permission could not be saved. Please choose the photo again.",
                     Toast.LENGTH_LONG).show();
